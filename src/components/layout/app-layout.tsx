@@ -1,20 +1,9 @@
-import { Outlet } from "react-router-dom"
-import { AppNavbar } from "@/components/layout/app-navbar"
-import { AppSidebar } from "@/components/layout/app-sidebar"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { Toaster } from "@/components/ui/sonner"
+import { Navigate } from "react-router-dom"
+import { useAuth } from "@/contexts/auth-context"
+import { getHomeRoute } from "@/lib/role-redirect"
 
+/** @deprecated — Redirige a la ruta correcta según rol. Mantenido para compatibilidad. */
 export function AppLayout() {
-  return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <AppNavbar />
-        <main className="flex flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8">
-          <Outlet />
-        </main>
-      </SidebarInset>
-      <Toaster richColors />
-    </SidebarProvider>
-  )
+  const { session } = useAuth()
+  return <Navigate to={getHomeRoute(session?.user.roles ?? [])} replace />
 }

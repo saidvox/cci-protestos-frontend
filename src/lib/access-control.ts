@@ -1,4 +1,5 @@
-import { navigationItems, type NavigationItem } from "@/config/navigation"
+import type { NavigationItem } from "@/config/navigation"
+import { debtorNavigation, analystNavigation, erpNavigation } from "@/config/navigation"
 import type { Role } from "@/types/domain"
 
 export function canAccess(userRoles: readonly Role[], requiredRoles?: readonly Role[]) {
@@ -6,6 +7,9 @@ export function canAccess(userRoles: readonly Role[], requiredRoles?: readonly R
   return requiredRoles.some((role) => userRoles.includes(role))
 }
 
-export function visibleNavigation(userRoles: readonly Role[]): NavigationItem[] {
-  return navigationItems.filter((item) => canAccess(userRoles, item.roles))
+export function navigationForRoles(roles: readonly Role[]): NavigationItem[] {
+  if (roles.includes("USER_DEBTOR")) return [...debtorNavigation]
+  if (roles.includes("BANK_ANALYST")) return [...analystNavigation]
+  if (roles.includes("CCI_ADMIN") || roles.includes("CCI_STAFF")) return [...erpNavigation]
+  return []
 }

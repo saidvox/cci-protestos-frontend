@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { Landmark, LoaderCircle, LockKeyhole } from "lucide-react"
-import { Navigate, useLocation, useNavigate } from "react-router-dom"
+import { Navigate } from "react-router-dom"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,28 +8,52 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/contexts/auth-context"
+import { getHomeRoute } from "@/lib/role-redirect"
+import { getErrorMessage } from "@/lib/utils"
+import { appService } from "@/services/service-factory"
 
 export function LoginPage() {
-  const { isAuthenticated, login } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [email, setEmail] = useState("admin@demo.local")
-  const [password, setPassword] = useState("Demo123!")
+  const { session, isAuthenticated, login, loading: authLoading } = useAuth()
+  const [email, setEmail] = useState("deudor@demo.local")
+  const [password, setPassword] = useState("password")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  if (isAuthenticated) return <Navigate to="/" replace />
+  if (authLoading) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (isAuthenticated) {
+    const roles = session?.user.roles ?? []
+    if (roles.includes("USER_DEBTOR")) {
+      return <Navigate to="/" replace />
+    }
+    return <Navigate to={getHomeRoute(roles)} replace />
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError("")
     setLoading(true)
     try {
-      await login({ email, password })
-      const destination = (location.state as { from?: string } | null)?.from ?? "/"
-      navigate(destination, { replace: true })
+      // 1. Call appService.login directly first to check roles
+      const response = await appService.login({ email: email.trim(), password })
+      const roles = response.user.roles
+
+      if (roles.includes("CCI_ADMIN") || roles.includes("CCI_STAFF")) {
+        setError("Acceso denegado. Para ingresar al ERP use la ruta correspondiente.")
+        setLoading(false)
+        return
+      }
+
+      // 2. If valid role, login in auth-context
+      await login({ email: email.trim(), password })
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "No fue posible iniciar sesión.")
+      setError(getErrorMessage(reason, "No fue posible iniciar sesión."))
     } finally {
       setLoading(false)
     }
@@ -61,7 +85,7 @@ export function LoginPage() {
               {error ? <Alert variant="destructive"><LockKeyhole /><AlertTitle>Acceso no disponible</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="email">Correo institucional</FieldLabel>
+                  <FieldLabel htmlFor="email">Correo electrónico</FieldLabel>
                   <Input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
                 </Field>
                 <Field>
@@ -69,15 +93,53 @@ export function LoginPage() {
                   <Input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
                 </Field>
               </FieldGroup>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} className="cursor-pointer">
                 {loading ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : null}
                 {loading ? "Ingresando..." : "Iniciar sesión"}
               </Button>
+
+              <div className="flex flex-col gap-2 pt-2 border-t">
+                <p className="text-xs font-semibold text-muted-foreground text-center">Accesos rápidos para demostración:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs cursor-pointer"
+                    onClick={() => {
+                      setEmail("deudor@demo.local")
+                      setPassword("password")
+                      setTimeout(() => {
+                        const el = document.getElementById("login-form") as HTMLFormElement
+                        el?.requestSubmit()
+                      }, 50)
+                    }}
+                  >
+                    Deudor de prueba
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs cursor-pointer"
+                    onClick={() => {
+                      setEmail("analista@demo.local")
+                      setPassword("password")
+                      setTimeout(() => {
+                        const el = document.getElementById("login-form") as HTMLFormElement
+                        el?.requestSubmit()
+                      }, 50)
+                    }}
+                  >
+                    Analista de prueba
+                  </Button>
+                </div>
+              </div>
             </form>
           </CardContent>
           <CardFooter className="flex flex-col items-start gap-3">
             <Separator />
-            <FieldDescription>Demo: usa admin@demo.local, analista@demo.local o entidad@demo.local con cualquier contraseña.</FieldDescription>
+            <FieldDescription>Demo: usa deudor@demo.local o analista@demo.local con la contraseña "password".</FieldDescription>
           </CardFooter>
         </Card>
       </section>

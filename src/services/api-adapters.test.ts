@@ -12,17 +12,17 @@ import {
 
 describe("API DTO adapters", () => {
   it("maps the backend login shape", () => {
-    expect(adaptLogin({ accessToken: "jwt", tokenType: "Bearer", expiresAt: "2099-01-01T00:00:00Z", usuario: { id: 3, nombre: "Ana", email: "ana@demo.local", roles: ["ADMIN"] } })).toMatchObject({ token: "jwt", user: { id: 3, name: "Ana", roles: ["ADMIN"] } })
+    expect(adaptLogin({ expiresAt: "2099-01-01T00:00:00Z", usuario: { id: 3, nombre: "Ana", email: "ana@demo.local", roles: ["ADMIN"] } })).toEqual({ expiresAt: "2099-01-01T00:00:00Z", user: { id: 3, name: "Ana", email: "ana@demo.local", roles: ["CCI_ADMIN"] } })
   })
   it("maps protest, request and catalog DTOs", () => {
     expect(adaptProtest({ id: 1, numeroDocumento: "20", nombreDeudor: "Empresa", entidad: "Banco", tipoTitulo: "Letra", monto: 25, moneda: "PEN", fechaProtesto: "2026-01-01", vigente: true })).toMatchObject({ documentNumber: "20", debtorName: "Empresa", status: "VIGENTE" })
-    expect(adaptRequest({ id: 2, codigo: "SOL-1", solicitante: "Ana", entidad: "Banco", analista: null, estado: "REGISTRADA", motivo: "Registro | Detalle", observacion: null, creadoEn: "2026-01-01T00:00:00Z", actualizadoEn: "2026-01-01T00:00:00Z" })).toMatchObject({ code: "SOL-1", applicant: "Ana", type: "Registro" })
+    expect(adaptRequest({ id: 2, codigo: "SOL-1", solicitante: "Ana", entidad: "Banco", analista: null, estado: "REGISTRADA", tipoTramite: "REGISTRO_PROTESTO", numeroDocumentoDeudor: "201", monto: 25, moneda: "PEN", motivo: "Detalle", version: 0, observacion: null, creadoEn: "2026-01-01T00:00:00Z", actualizadoEn: "2026-01-01T00:00:00Z" })).toMatchObject({ code: "SOL-1", type: "REGISTRO_PROTESTO", documentNumber: "201", amount: 25, currency: "PEN", reason: "Detalle", version: 0 })
     expect(adaptEntity({ id: 1, ruc: "201", razonSocial: "Banco", contacto: "Persona", email: "p@demo.local", activo: true })).toMatchObject({ name: "Banco", contact: "Persona", email: "p@demo.local" })
     expect(adaptAnalyst({ id: 1, codigo: "AN-01", nombre: "Carlos", email: "c@demo.local", disponible: true })).toMatchObject({ code: "AN-01", name: "Carlos", active: true })
   })
   it("maps reports, audits and page metadata", () => {
     expect(adaptReport({ total: 2, porEstado: { REGISTRADA: 2 } }).byStatus.REGISTRADA).toBe(2)
-    expect(adaptAudit({ id: 1, actor: "Ana", accion: "CREÓ", recurso: "Solicitud", recursoId: "1", detalle: "ok", fecha: "2026-01-01T00:00:00Z" })).toMatchObject({ action: "CREÓ", resource: "Solicitud" })
+    expect(adaptAudit({ id: 1, actor: "Ana", accion: "CREÃ“", recurso: "Solicitud", recursoId: "1", detalle: "ok", fecha: "2026-01-01T00:00:00Z" })).toMatchObject({ action: "CREÃ“", resource: "Solicitud" })
     expect(adaptPage({ content: [1, 2], page: 1, size: 10, totalElements: 12, totalPages: 2 }, (value) => String(value))).toEqual({ content: ["1", "2"], page: 1, size: 10, totalElements: 12, totalPages: 2 })
   })
 })

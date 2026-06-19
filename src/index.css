@@ -131,3 +131,115 @@
     @apply font-sans;
     }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Bottom Navigation Bar (visible solo en móvil, < 768px)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.bottom-nav {
+  display: none; /* oculto por defecto en desktop */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--background);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.bottom-nav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+  padding: 0.625rem 0.25rem;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: color 150ms ease;
+  min-height: 56px;
+}
+
+.bottom-nav__item:hover {
+  color: var(--foreground);
+}
+
+.bottom-nav__item--active {
+  color: var(--primary);
+}
+
+.bottom-nav__icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.bottom-nav__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 64px;
+  text-align: center;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Helper: ocultar sidebar en móvil
+   ───────────────────────────────────────────────────────────────────────────── */
+.hide-sidebar-on-mobile {
+  display: contents; /* hereda el flujo como si no existiera el wrapper */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Breakpoint móvil (< 768px)
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .bottom-nav {
+    display: flex;
+    align-items: stretch;
+  }
+
+  /* Ocultar el sidebar shadcn en móvil — deja solo el contenido */
+  .hide-sidebar-on-mobile {
+    display: none;
+  }
+
+  /* Quitar el trigger del sidebar en móvil (ya no hay sidebar) */
+  [data-slot="sidebar-trigger"] {
+    display: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Dialog — animación de entrada / salida (modern-web-guidance: animate-to-from-top-layer)
+   ───────────────────────────────────────────────────────────────────────────── */
+[role="dialog"],
+dialog {
+  /* Animación al entrar */
+  animation: dialog-enter 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@starting-style {
+  [role="dialog"],
+  dialog {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

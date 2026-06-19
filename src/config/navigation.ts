@@ -1,38 +1,52 @@
 import type { LucideIcon } from "lucide-react"
 import {
   BarChart3,
+  Bell,
   Building2,
-  ClipboardCheck,
-  FileArchive,
+  ClipboardList,
   FileSearch,
   FileSpreadsheet,
-  FileUp,
   Gauge,
-  History,
   ListChecks,
-  UserRoundCog,
+  Users,
+  Eye,
+  FolderOpen,
 } from "lucide-react"
-import type { Role } from "@/types/domain"
 
 export interface NavigationItem {
   label: string
   path: string
   icon: LucideIcon
-  roles?: readonly Role[]
 }
 
-export const navigationItems: readonly NavigationItem[] = [
-  { label: "Dashboard", path: "/", icon: Gauge },
-  { label: "Consulta de protestos", path: "/protestos", icon: FileSearch },
-  { label: "Registrar solicitud", path: "/solicitudes/nueva", icon: FileArchive },
-  { label: "Seguimiento", path: "/solicitudes", icon: ListChecks },
-  { label: "Carga de documentos", path: "/documentos", icon: FileUp },
-  { label: "Carga de Excel", path: "/excel", icon: FileSpreadsheet, roles: ["ADMIN", "ANALISTA"] },
-  { label: "Entidades financieras", path: "/entidades", icon: Building2, roles: ["ADMIN"] },
-  { label: "Analistas", path: "/analistas", icon: UserRoundCog, roles: ["ADMIN"] },
-  { label: "Revisión", path: "/revision", icon: ClipboardCheck, roles: ["ADMIN", "ANALISTA"] },
-  { label: "Reportes", path: "/reportes", icon: BarChart3, roles: ["ADMIN", "ANALISTA"] },
-  { label: "Auditoría", path: "/auditoria", icon: History, roles: ["ADMIN"] },
+/** Navegación del deudor — /usuario/** */
+export const debtorNavigation: readonly NavigationItem[] = [
+  { label: "Dashboard", path: "/usuario/dashboard", icon: Gauge },
+  { label: "Consultar protestos", path: "/usuario/consulta", icon: FileSearch },
+  { label: "Mis solicitudes", path: "/usuario/solicitudes", icon: ListChecks },
+  { label: "Mis documentos", path: "/usuario/documentos", icon: FolderOpen },
+  { label: "Seguimiento", path: "/usuario/seguimiento", icon: Eye },
+  { label: "Notificaciones", path: "/usuario/notificaciones", icon: Bell },
 ]
 
-export const titleByPath = new Map(navigationItems.map((item) => [item.path, item.label]))
+/** Navegación del analista bancario — /analista/** */
+export const analystNavigation: readonly NavigationItem[] = [
+  { label: "Dashboard", path: "/analista/dashboard", icon: Gauge },
+  { label: "Historial de cargas", path: "/analista/historial-excel", icon: FileSpreadsheet },
+  { label: "Solicitudes", path: "/analista/solicitudes", icon: ClipboardList },
+]
+
+/** Navegación del ERP interno — /erp/** */
+export const erpNavigation: readonly NavigationItem[] = [
+  { label: "Dashboard", path: "/erp/dashboard", icon: Gauge },
+  { label: "Protestos", path: "/erp/protestos", icon: FileSearch },
+  { label: "Solicitudes", path: "/erp/solicitudes", icon: ListChecks },
+  { label: "Entidades", path: "/erp/entidades", icon: Building2 },
+  { label: "Analistas", path: "/erp/analistas", icon: Users },
+  { label: "Reportes", path: "/erp/reportes", icon: BarChart3 },
+]
+
+/** Mapa de títulos para breadcrumbs */
+export const titleByPath = new Map(
+  [...debtorNavigation, ...analystNavigation, ...erpNavigation].map((item) => [item.path, item.label]),
+)
