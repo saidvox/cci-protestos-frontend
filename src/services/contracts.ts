@@ -15,7 +15,7 @@ export interface AppService {
   login(credentials: LoginCredentials): Promise<AuthSession>
   getProtests(query?: string): Promise<Protest[]>
   getRequests(mine?: boolean): Promise<Page<RequestRecord>>
-  createRequest(input: { type: string; detail: string; entityId: number }): Promise<RequestRecord>
+  createRequest(input: { type: string; detail: string; entityId: number; documentoDeudor: string; montoProtestado: number }): Promise<RequestRecord>
   updateRequestStatus(id: number, status: RequestStatus, observation?: string, analystId?: number): Promise<RequestRecord>
   uploadDocument(requestId: number, file: File): Promise<void>
   uploadExcel(file: File): Promise<void>

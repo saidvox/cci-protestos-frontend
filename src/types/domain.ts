@@ -43,6 +43,8 @@ export interface RequestRecord {
   status: RequestStatus
   createdAt: string
   observation?: string
+  documentoDeudor?: string
+  montoProtestado?: number
 }
 
 export interface FinancialEntity {

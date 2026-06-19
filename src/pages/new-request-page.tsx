@@ -17,6 +17,8 @@ export function NewRequestPage() {
   const [entityId, setEntityId] = useState("")
   const [entities, setEntities] = useState<FinancialEntity[]>([])
   const [detail, setDetail] = useState("")
+  const [documentoDeudor, setDocumentoDeudor] = useState("")
+  const [montoProtestado, setMontoProtestado] = useState("")
   const [created, setCreated] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -29,8 +31,8 @@ export function NewRequestPage() {
   async function submit(event: FormEvent) {
     event.preventDefault(); setLoading(true)
     try {
-      const result = await appService.createRequest({ type, entityId: Number(entityId), detail })
-      setCreated(result.code); setDetail(""); toast.success("Solicitud registrada correctamente.")
+      const result = await appService.createRequest({ type, entityId: Number(entityId), detail, documentoDeudor, montoProtestado: Number(montoProtestado) })
+      setCreated(result.code); setDetail(""); setDocumentoDeudor(""); setMontoProtestado(""); toast.success("Solicitud registrada correctamente.")
     } catch { toast.error("No fue posible registrar la solicitud.") 
     } finally { setLoading(false) }
   }
@@ -49,8 +51,8 @@ export function NewRequestPage() {
                 <Field><FieldLabel>Entidad financiera</FieldLabel><Select value={entityId} onValueChange={setEntityId}><SelectTrigger><SelectValue placeholder="Selecciona una entidad" /></SelectTrigger><SelectContent><SelectGroup>{entities.map((entity) => <SelectItem key={entity.id} value={String(entity.id)}>{entity.name}</SelectItem>)}</SelectGroup></SelectContent></Select></Field>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
-                <Field><FieldLabel htmlFor="document">Documento del deudor</FieldLabel><Input id="document" placeholder="RUC o DNI" required /></Field>
-                <Field><FieldLabel htmlFor="amount">Monto protestado</FieldLabel><Input id="amount" type="number" min="1" placeholder="0.00" required /></Field>
+                <Field><FieldLabel htmlFor="document">Documento del deudor</FieldLabel><Input id="document" value={documentoDeudor} onChange={(event) => setDocumentoDeudor(event.target.value)} placeholder="RUC o DNI" required /></Field>
+                <Field><FieldLabel htmlFor="amount">Monto protestado</FieldLabel><Input id="amount" type="number" min="1" step="0.01" value={montoProtestado} onChange={(event) => setMontoProtestado(event.target.value)} placeholder="0.00" required /></Field>
               </div>
               <Field><FieldLabel htmlFor="detail">Detalle</FieldLabel><Textarea id="detail" value={detail} onChange={(event) => setDetail(event.target.value)} placeholder="Describe brevemente el motivo de la solicitud." required /><FieldDescription>No incluyas información sensible en este entorno académico.</FieldDescription></Field>
             </FieldGroup>

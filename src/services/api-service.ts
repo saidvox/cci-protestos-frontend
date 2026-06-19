@@ -7,9 +7,9 @@ import {
 
 export const apiService: AppService = {
   async login(credentials) { return adaptLogin((await apiClient.post<LoginDto>("/auth/login", credentials)).data) },
-  async getProtests(query) { return (await apiClient.get<ProtestDto[]>("/protestos/consulta", { params: { nombre: query } })).data.map(adaptProtest) },
+  async getProtests(query) { const isDoc = query && /^\d+$/.test(query.trim()); return (await apiClient.get<ProtestDto[]>("/protestos/consulta", { params: isDoc ? { documento: query } : { nombre: query } })).data.map(adaptProtest) },
   async getRequests(mine = false) { return adaptPage((await apiClient.get<PageDto<RequestDto>>(mine ? "/solicitudes/mis-solicitudes" : "/solicitudes")).data, adaptRequest) },
-  async createRequest(input) { return adaptRequest((await apiClient.post<RequestDto>("/solicitudes", { entidadId: input.entityId, motivo: `${input.type} | ${input.detail}` })).data) },
+  async createRequest(input) { return adaptRequest((await apiClient.post<RequestDto>("/solicitudes", { entidadId: input.entityId, motivo: `${input.type} | ${input.detail}`, documentoDeudor: input.documentoDeudor, montoProtestado: input.montoProtestado })).data) },
   async updateRequestStatus(id, status, observation, analystId) { return adaptRequest((await apiClient.put<RequestDto>(`/solicitudes/${id}/estado`, { estado: status, observacion: observation, analistaId: analystId })).data) },
   async uploadDocument(requestId, file) {
     const form = new FormData(); form.append("solicitudId", String(requestId)); form.append("file", file)

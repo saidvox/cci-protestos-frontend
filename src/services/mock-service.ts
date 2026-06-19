@@ -38,7 +38,7 @@ export const mockService: AppService = {
   async createRequest(input) {
     await wait()
     const entity = entities.find((item) => item.id === input.entityId)
-    return { id: Date.now(), code: "SOL-2026-0049", applicant: "Entidad Demo", financialEntity: entity?.name ?? "Entidad Demo", type: input.type, status: "REGISTRADA", createdAt: "2026-06-18" }
+    return { id: Date.now(), code: "SOL-2026-0049", applicant: "Entidad Demo", financialEntity: entity?.name ?? "Entidad Demo", type: input.type, status: "REGISTRADA", createdAt: "2026-06-18", documentoDeudor: input.documentoDeudor, montoProtestado: input.montoProtestado }
   },
   async updateRequestStatus(id, status, observation) {
     await wait()
