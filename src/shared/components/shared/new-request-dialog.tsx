@@ -1,4 +1,4 @@
-锘縤mport { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { CheckCircle2, Plus, Send } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert"
@@ -27,8 +27,8 @@ import type { Currency, FinancialEntity, RequestType } from "@/shared/types/doma
 
 const typeLabels: Record<RequestType, string> = {
   REGISTRO_PROTESTO: "Registro de protesto",
-  REGULARIZACION: "Regularizaci贸n",
-  RECTIFICACION: "Rectificaci贸n",
+  REGULARIZACION: "Regularizaci髇",
+  RECTIFICACION: "Rectificaci髇",
 }
 
 interface NewRequestDialogProps {
@@ -116,7 +116,7 @@ export function NewRequestDialog({ onCreated }: NewRequestDialogProps) {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Registro de solicitud</DialogTitle>
-          <DialogDescription>Completa los campos para iniciar un tr谩mite de protesto.</DialogDescription>
+          <DialogDescription>Completa los campos para iniciar un tr醡ite de protesto.</DialogDescription>
         </DialogHeader>
 
         {created ? (
@@ -124,7 +124,7 @@ export function NewRequestDialog({ onCreated }: NewRequestDialogProps) {
             <CheckCircle2 />
             <AlertTitle>Solicitud registrada</AlertTitle>
             <AlertDescription>
-              El c贸digo de seguimiento es <strong>{created}</strong>.
+              El c骴igo de seguimiento es <strong>{created}</strong>.
             </AlertDescription>
           </Alert>
         ) : (
@@ -132,7 +132,7 @@ export function NewRequestDialog({ onCreated }: NewRequestDialogProps) {
             <FieldGroup>
               <div className="grid gap-5 md:grid-cols-2">
                 <Field>
-                  <FieldLabel htmlFor="dlg-type">Tipo de tr谩mite</FieldLabel>
+                  <FieldLabel htmlFor="dlg-type">Tipo de tr醡ite</FieldLabel>
                   <Select value={type} onValueChange={(value) => setType(value as RequestType)}>
                     <SelectTrigger id="dlg-type">
                       <SelectValue />
@@ -212,7 +212,7 @@ export function NewRequestDialog({ onCreated }: NewRequestDialogProps) {
                   onChange={(e) => setReason(e.target.value)}
                   required
                 />
-                <FieldDescription>No incluyas informaci贸n sensible en el entorno acad茅mico.</FieldDescription>
+                <FieldDescription>Incluye solo la informaci髇 necesaria para sustentar el tr醡ite.</FieldDescription>
               </Field>
             </FieldGroup>
             <div className="mt-6 flex justify-end gap-3">

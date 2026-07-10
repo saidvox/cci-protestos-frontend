@@ -1,6 +1,6 @@
-﻿import { analysts, auditEntries, entities, protests, requests } from "@/shared/mocks/data"
+import { analysts, auditEntries, entities, protests, requests } from "@/shared/mocks/data"
 import type { AppService } from "@/shared/services/contracts"
-import type { AuthSession, RegisterInput, RequestRecord, RequestStatus, Role } from "@/shared/types/domain"
+import type { AuthSession, OfficialDocument, RegisterInput, RequestRecord, RequestStatus, Role } from "@/shared/types/domain"
 
 const wait = (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms))
 const clone = <T>(value: T): T => structuredClone(value)
@@ -31,6 +31,40 @@ interface MockUser {
   email: string
   tipoDocumento: string
   numeroDocumento: string
+}
+
+const defaultOfficialDocuments: OfficialDocument[] = [
+  {
+    id: 1,
+    title: "Formulario Unico de Tramite (FUT)",
+    description: "Formato oficial para solicitar el levantamiento de protesto.",
+    filename: "FUT_Levantamiento_Protesto.pdf",
+    downloadUrl: "/api/documentos-tramite/1/download",
+    sizeBytes: 145000,
+    active: true,
+    order: 1,
+    createdAt: "2026-06-01T00:00:00Z",
+  },
+  {
+    id: 2,
+    title: "Declaracion Jurada de Pago Total",
+    description: "Declaracion jurada para sustentar el pago total de la deuda.",
+    filename: "Declaracion_Jurada_Pago_Deuda.pdf",
+    downloadUrl: "/api/documentos-tramite/2/download",
+    sizeBytes: 120000,
+    active: true,
+    order: 2,
+    createdAt: "2026-06-01T00:00:00Z",
+  },
+]
+
+function getMockOfficialDocuments() {
+  const saved = localStorage.getItem("mock_official_documents")
+  return saved ? JSON.parse(saved) as OfficialDocument[] : clone(defaultOfficialDocuments)
+}
+
+function setMockOfficialDocuments(items: OfficialDocument[]) {
+  localStorage.setItem("mock_official_documents", JSON.stringify(items))
 }
 
 export const mockService: AppService = {
@@ -94,6 +128,16 @@ export const mockService: AppService = {
     registeredUsers.push(newUser)
     localStorage.setItem("mock_users", JSON.stringify(registeredUsers))
   },
+  async lookupDebtor(_tipoDocumento: string, numeroDocumento: string) {
+    await wait()
+    const normalized = numeroDocumento.replace(/\D/g, "")
+    const found = protests.find((item) => item.documentNumber === normalized)
+    return {
+      found: Boolean(found),
+      nombreCompleto: found?.debtorName,
+      email: found ? `${normalized}@deudor.local` : undefined,
+    }
+  },
   async getDashboard() {
     await wait()
     const value = report()
@@ -110,7 +154,11 @@ export const mockService: AppService = {
     await wait()
     const document = filters.documento?.toLowerCase() ?? ""
     const name = filters.nombre?.toLowerCase() ?? ""
-    return clone(protests.filter((item) => (!document || item.documentNumber.includes(document)) && (!name || item.debtorName.toLowerCase().includes(name))))
+    return page(
+      clone(protests.filter((item) => (!document || item.documentNumber.includes(document)) && (!name || item.debtorName.toLowerCase().includes(name)) && (!filters.estado || item.status === filters.estado))),
+      filters.page ?? 0,
+      filters.size ?? 10,
+    )
   },
   async getRequests({ mine = false, page: index = 0, size = 10, status, search } = {}) {
     await wait()
@@ -138,11 +186,102 @@ export const mockService: AppService = {
     return { ...clone(current), status, observation, version: current.version + 1 } satisfies RequestRecord
   },
   async uploadDocument() { await wait() },
+  async getRequestDocuments(requestId) {
+    await wait()
+    return [
+      { id: requestId * 10 + 1, requestId, filename: "voucher-pago.pdf", mimeType: "application/pdf", sizeBytes: 184_000, downloadUrl: `/api/documentos/${requestId * 10 + 1}/download`, createdAt: new Date().toISOString() },
+      { id: requestId * 10 + 2, requestId, filename: "formato-solicitud-completado.pdf", mimeType: "application/pdf", sizeBytes: 262_000, downloadUrl: `/api/documentos/${requestId * 10 + 2}/download`, createdAt: new Date().toISOString() },
+    ]
+  },
+  async previewRequestDocument(document) {
+    await wait()
+    return new Blob([`Documento simulado: ${document.filename}`], { type: document.mimeType })
+  },
+  async downloadRequestDocument(document) {
+    await wait()
+    const blob = new Blob([`Documento simulado: ${document.filename}`], { type: document.mimeType })
+    const url = URL.createObjectURL(blob)
+    const link = window.document.createElement("a")
+    link.href = url
+    link.download = document.filename
+    window.document.body.appendChild(link)
+    link.click()
+    window.document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  },
   async uploadExcel() { await wait() },
+  async validateExcel() { await wait(); return { valid: true, totalRows: 10, validRows: 10, errorRows: 0, errors: [], preview: [] } },
+  async importExcel() { await wait(); return { cargaId: 1, filename: "plantilla-protestos-cci-datos-prueba.xlsx", status: "PROCESADA", summary: "Archivo importado correctamente", totalRows: 10, importedRows: 10, errorRows: 0, errors: [] } },
+  async getOfficialDocuments(includeInactive = false) {
+    await wait()
+    return getMockOfficialDocuments()
+      .filter((item) => includeInactive || item.active)
+      .sort((a, b) => a.order - b.order)
+  },
+  async uploadOfficialDocument(input) {
+    await wait()
+    const items = getMockOfficialDocuments()
+    const item: OfficialDocument = {
+      id: Date.now(),
+      title: input.title,
+      description: input.description,
+      filename: input.file.name,
+      downloadUrl: `/api/documentos-tramite/${Date.now()}/download`,
+      sizeBytes: input.file.size,
+      active: true,
+      order: input.order ?? items.length + 1,
+      createdAt: new Date().toISOString(),
+    }
+    setMockOfficialDocuments([item, ...items])
+    return item
+  },
+  async deactivateOfficialDocument(id) {
+    await wait()
+    const items = getMockOfficialDocuments()
+    const next = items.map((item) => item.id === id ? { ...item, active: false } : item)
+    setMockOfficialDocuments(next)
+    const item = next.find((value) => value.id === id)
+    if (!item) throw new Error("Documento no encontrado.")
+    return item
+  },
+  async downloadOfficialDocument(document) {
+    await wait()
+    const blob = new Blob([`PDF simulado: ${document.title}`], { type: "application/pdf" })
+    const url = URL.createObjectURL(blob)
+    const link = window.document.createElement("a")
+    link.href = url
+    link.download = document.filename
+    window.document.body.appendChild(link)
+    link.click()
+    window.document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  },
+  async previewOfficialDocument(document) {
+    await wait()
+    return new Blob([`PDF simulado: ${document.title}`], { type: "application/pdf" })
+  },
   async getEntities() { await wait(); return clone(entities) },
   async createEntity(input) { await wait(); return { id: Date.now(), ...input, active: true } },
+  async updateEntity(id, input) { await wait(); return { id, ...input } },
   async getAnalysts() { await wait(); return clone(analysts) },
-  async createAnalyst(input) { await wait(); return { id: Date.now(), ...input, assigned: 0, active: true } },
+  async createAnalyst(input) { 
+    await wait(); 
+    const ent = entities.find(e => e.id === input.entityId);
+    return { id: Date.now(), ...input, assigned: 0, active: true, entityName: ent?.name } 
+  },
+  async updateAnalyst(id, input) { 
+    await wait(); 
+    const ent = entities.find(e => e.id === input.entityId);
+    return { id, ...input, assigned: 0, entityName: ent?.name } 
+  },
+  async getDebtorRequestsHistory(documentNumber) {
+    await wait()
+    return clone(requests).filter((item) => item.documentNumber === documentNumber)
+  },
+  async updateRequest(id, input) {
+    await wait()
+    return { id, code: "SOL-CORRECTED", applicant: "Deudor Demo", ...input, status: "REGISTRADA" as RequestStatus, version: 1, createdAt: new Date().toISOString(), financialEntity: entities.find(e => e.id === input.entityId)?.name || "" }
+  },
   async getReport() { await wait(); return report() },
   async getAudit({ page: index = 0, size = 10 } = {}) { await wait(); return page(clone(auditEntries), index, size) },
 }

@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from "react"
-import { Eye, RefreshCw } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Eye, RefreshCw, Plus, Send } from "lucide-react"
+import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert"
 import { Button } from "@/shared/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/shared/components/ui/empty"
 import { Skeleton } from "@/shared/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table"
@@ -14,13 +15,21 @@ import { StatusBadge } from "@/shared/components/shared/status-badge"
 import { NewRequestDialog } from "@/shared/components/shared/new-request-dialog"
 import { UploadCard } from "@/shared/components/shared/upload-card"
 import { appService } from "@/shared/services/service-factory"
-import type { Page, RequestRecord } from "@/shared/types/domain"
+import type { Page, RequestRecord, RequestDocument } from "@/shared/types/domain"
+
+const formatBytes = (bytes: number) => {
+  if (!bytes) return "0 KB"
+  const units = ["B", "KB", "MB"]
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`
+}
 
 const emptyPage: Page<RequestRecord> = { content: [], page: 0, size: 10, totalElements: 0, totalPages: 0 }
 
 export function RequestsPage() {
   const [data, setData] = useState(emptyPage)
   const [selected, setSelected] = useState<RequestRecord | null>(null)
+  const [correcting, setCorrecting] = useState<RequestRecord | null>(null)
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -103,15 +112,25 @@ export function RequestsPage() {
                               <StatusBadge status={item.status} />
                             </TableCell>
                             <TableCell className="text-muted-foreground">{item.createdAt}</TableCell>
-                            <TableCell>
+                            <TableCell className="flex items-center gap-1.5">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 aria-label={`Ver ${item.code}`}
                                 onClick={() => setSelected(item)}
                               >
-                                <Eye />
+                                <Eye className="size-4" />
                               </Button>
+                              {(item.status === "OBSERVADA_CCI" || item.status === "OBSERVADA_ENTIDAD") && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 text-xs font-semibold px-2.5 border-amber-200 text-amber-700 hover:bg-amber-50 cursor-pointer"
+                                  onClick={() => setCorrecting(item)}
+                                >
+                                  Corregir
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -196,8 +215,266 @@ export function RequestsPage() {
               </div>
             </dl>
           ) : null}
+          {selected && (selected.status === "OBSERVADA_CCI" || selected.status === "OBSERVADA_ENTIDAD") && (
+            <DialogFooter className="mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs font-semibold border-amber-200 text-amber-700 hover:bg-amber-50 cursor-pointer w-full sm:w-auto"
+                onClick={() => {
+                  setCorrecting(selected)
+                  setSelected(null)
+                }}
+              >
+                Corregir Solicitud
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Corrección */}
+      <Dialog open={Boolean(correcting)} onOpenChange={(open) => { if (!open) setCorrecting(null) }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Corregir Solicitud <span className="font-mono text-indigo-600">{correcting?.code}</span></DialogTitle>
+            <DialogDescription>
+              Corrige los campos observados por la Cámara de Comercio para reenviar el trámite.
+            </DialogDescription>
+          </DialogHeader>
+
+          {correcting?.observation && (
+            <div className="mb-2 rounded-lg bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800 text-left">
+              <strong>Observación de la revisión:</strong>
+              <p className="mt-1 font-medium">{correcting.observation}</p>
+            </div>
+          )}
+
+          {correcting && (
+            <CorrectionForm
+              request={correcting}
+              onFinished={() => {
+                setCorrecting(null)
+                retry()
+              }}
+              onCancel={() => setCorrecting(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+interface CorrectionFormProps {
+  request: RequestRecord
+  onFinished: () => void
+  onCancel: () => void
+}
+
+function CorrectionForm({ request, onFinished, onCancel }: CorrectionFormProps) {
+  const [type, setType] = useState<any>(request.type)
+  const [entityId, setEntityId] = useState("")
+  const [entities, setEntities] = useState<any[]>([])
+  const [reason, setReason] = useState(request.reason)
+  const [documentNumber, setDocumentNumber] = useState(request.documentNumber)
+  const [amount, setAmount] = useState(String(request.amount))
+  const [currency, setCurrency] = useState<any>(request.currency)
+  const [loading, setLoading] = useState(false)
+
+  const [docs, setDocs] = useState<RequestDocument[]>([])
+  const [docsLoading, setDocsLoading] = useState(false)
+
+  useEffect(() => {
+    appService.getEntities().then((items) => {
+      setEntities(items)
+      const found = items.find(e => e.name === request.financialEntity)
+      if (found) {
+        setEntityId(String(found.id))
+      } else {
+        setEntityId(String(items[0]?.id ?? ""))
+      }
+    })
+  }, [request])
+
+  useEffect(() => {
+    setDocsLoading(true)
+    appService.getRequestDocuments(request.id)
+      .then(setDocs)
+      .finally(() => setDocsLoading(false))
+  }, [request])
+
+  async function handleFileUpload(file: File) {
+    try {
+      await appService.uploadDocument(request.id, file)
+      toast.success("Documento subido correctamente.")
+      const updated = await appService.getRequestDocuments(request.id)
+      setDocs(updated)
+    } catch {
+      toast.error("Error al subir el documento.")
+    }
+  }
+
+  async function submit(event: any) {
+    event.preventDefault()
+    const parsed = Number(amount)
+    if (
+      !entityId ||
+      !documentNumber.trim() ||
+      documentNumber.length > 20 ||
+      !Number.isFinite(parsed) ||
+      parsed <= 0 ||
+      !reason.trim()
+    ) {
+      toast.error("Por favor, complete todos los campos requeridos correctamente.")
+      return
+    }
+    setLoading(true)
+    try {
+      await appService.updateRequest(request.id, {
+        type,
+        entityId: Number(entityId),
+        documentNumber: documentNumber.trim(),
+        amount: parsed,
+        currency,
+        reason: reason.trim(),
+      })
+      toast.success(`Solicitud corregida y reenviada correctamente.`)
+      onFinished()
+    } catch {
+      toast.error("No fue posible reenviar la solicitud.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4 text-left">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Tipo de trámite</label>
+          <select 
+            value={type} 
+            onChange={(e) => setType(e.target.value as any)}
+            className="w-full text-xs rounded border border-slate-200 p-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+          >
+            <option value="REGISTRO_PROTESTO">Registro de protesto</option>
+            <option value="REGULARIZACION">Regularización</option>
+            <option value="RECTIFICACION">Rectificación</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Entidad financiera</label>
+          <select 
+            value={entityId} 
+            onChange={(e) => setEntityId(e.target.value)}
+            className="w-full text-xs rounded border border-slate-200 p-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+          >
+            {entities.map((entity) => (
+              <option key={entity.id} value={String(entity.id)}>
+                {entity.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Documento del deudor</label>
+          <input
+            value={documentNumber}
+            onChange={(e) => setDocumentNumber(e.target.value)}
+            maxLength={20}
+            required
+            className="w-full text-xs rounded border border-slate-200 p-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Monto</label>
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            required
+            className="w-full text-xs rounded border border-slate-200 p-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Moneda</label>
+          <select 
+            value={currency} 
+            onChange={(e) => setCurrency(e.target.value as any)}
+            className="w-full text-xs rounded border border-slate-200 p-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+          >
+            <option value="PEN">PEN</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Motivo</label>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          required
+          rows={3}
+          className="w-full text-xs rounded border border-slate-200 p-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+        />
+      </div>
+
+      {/* Documentos */}
+      <div className="space-y-2 border-t pt-3">
+        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Documentos adjuntos</label>
+        <div className="space-y-1.5 max-h-[120px] overflow-y-auto">
+          {docsLoading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : docs.length === 0 ? (
+            <p className="text-xs text-slate-400 italic text-center py-2">No hay documentos adjuntos en esta solicitud.</p>
+          ) : (
+            docs.map(doc => (
+              <div key={doc.id} className="flex items-center justify-between gap-2 p-2 border rounded bg-slate-50 text-xs">
+                <span className="truncate font-medium text-slate-700">{doc.filename}</span>
+                <span className="text-[10px] text-slate-400">
+                  {doc.mimeType.split("/")[1]?.toUpperCase() || doc.mimeType} · {formatBytes(doc.sizeBytes)}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+        
+        {/* Upload Button */}
+        <input
+          type="file"
+          id="corr-file-upload"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) handleFileUpload(file)
+          }}
+        />
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="sm" 
+          className="w-full text-xs cursor-pointer"
+          onClick={() => document.getElementById("corr-file-upload")?.click()}
+        >
+          <Plus className="mr-1 size-3.5" />
+          Subir nuevo documento de corrección
+        </Button>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-3 border-t pt-3">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
+          <Send className="mr-1.5 size-3.5" />
+          {loading ? "Reenviando..." : "Reenviar solicitud"}
+        </Button>
+      </div>
+    </form>
   )
 }

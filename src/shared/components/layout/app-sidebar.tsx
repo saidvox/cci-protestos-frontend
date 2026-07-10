@@ -74,7 +74,7 @@ export function AppSidebar({ items, title = "Cámara de Comercio", subtitle = "I
           {badge ? (
             <Badge variant="outline" className="w-fit">{badge}</Badge>
           ) : (
-            <Badge variant="outline" className="w-fit">Entorno académico</Badge>
+            <Badge variant="outline" className="w-fit">Entorno institucional</Badge>
           )}
           {userName ? <span className="truncate">{userName}</span> : null}
         </div>

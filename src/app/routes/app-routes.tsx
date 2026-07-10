@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense } from "react"
+import { lazy, Suspense } from "react"
 import { Navigate, Route, Routes } from "react-router-dom"
 import { ProtectedRoute } from "@/app/routes/protected-route"
 import { Skeleton } from "@/shared/components/ui/skeleton"
@@ -27,7 +27,6 @@ const DashboardPage = lazy(() => import("@/features/erp/pages/dashboard-page").t
 const OperationsPage = lazy(() => import("@/features/erp/pages/operations-page").then((m) => ({ default: m.OperationsPage })))
 const ProtestQueryPage = lazy(() => import("@/features/erp/pages/protest-query-page").then((m) => ({ default: m.ProtestQueryPage })))
 const EntitiesPage = lazy(() => import("@/features/erp/pages/entities-page").then((m) => ({ default: m.EntitiesPage })))
-const AnalystsPage = lazy(() => import("@/features/erp/pages/analysts-page").then((m) => ({ default: m.AnalystsPage })))
 const ReportsPage = lazy(() => import("@/features/erp/pages/reports-page").then((m) => ({ default: m.ReportsPage })))
 
 export function AppRoutes() {
@@ -75,7 +74,7 @@ export function AppRoutes() {
             <Route path="erp/solicitudes" element={<OperationsPage />} />
             <Route path="erp/solicitudes/:id" element={<PlaceholderPage title="Detalle de solicitud" />} />
             <Route path="erp/entidades" element={<EntitiesPage />} />
-            <Route path="erp/analistas" element={<AnalystsPage />} />
+            <Route path="erp/analistas" element={<Navigate to="/erp/entidades" replace />} />
             <Route path="erp/reportes" element={<ReportsPage />} />
             <Route path="erp/auditoria" element={<Navigate to="/erp/dashboard" replace />} />
             <Route path="erp/configuracion" element={<Navigate to="/erp/dashboard" replace />} />

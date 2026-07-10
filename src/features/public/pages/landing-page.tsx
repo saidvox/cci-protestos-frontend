@@ -1,33 +1,30 @@
 ﻿import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight, Building2, CheckCircle2, FileText, Landmark, ShieldCheck, UserCheck, HelpCircle, ArrowUpRight, ShieldAlert, Download } from "lucide-react"
+import { ArrowRight, Building2, CheckCircle2, FileText, Landmark, ShieldCheck, UserCheck, HelpCircle, ArrowUpRight, ShieldAlert, Download, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/shared/components/ui/button"
 import { Card, CardContent, CardTitle } from "@/shared/components/ui/card"
+import { OfficialDocumentPreviewDialog } from "@/shared/components/shared/official-document-preview-dialog"
 import { useAuth } from "@/features/auth/auth-context"
 import { appService } from "@/shared/services/service-factory"
-import type { Protest } from "@/shared/types/domain"
+import type { OfficialDocument, Protest } from "@/shared/types/domain"
+
+const formatBytes = (bytes: number) => {
+  if (!bytes) return "0 KB"
+  const units = ["B", "KB", "MB", "GB"]
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`
+}
 
 export function LandingPage() {
   const { session, isAuthenticated } = useAuth()
 
-  const downloadMockPDF = (filename: string, docTitle: string) => {
-    const pdfContent = `%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 595 842] /Contents 5 0 R >>\nendobj\n4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n5 0 obj\n<< /Length 150 >>\nstream\nBT\n/F1 16 Tf\n50 780 Td\n(CAMARA DE COMERCIO DE ICA) Tj\n/F1 12 Tf\n0 -30 Td\n(${docTitle}) Tj\n0 -30 Td\n(Este documento es un formato oficial de simulacion para el levantamiento de protestos.) Tj\n0 -20 Td\n(Complete los datos del deudor y firme el documento antes de cargarlo.) Tj\n0 -30 Td\n(Fecha de descarga: ${new Date().toLocaleDateString()}) Tj\nET\nendstream\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000062 00000 n \n0000000121 00000 n \n0000000281 00000 n \n0000000378 00000 n \ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n579\n%%EOF`;
-    const blob = new Blob([pdfContent], { type: "application/pdf" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    toast.success(`Descargando plantilla: ${filename}`)
-  }
-
   // Real user debts state
   const [userDebts, setUserDebts] = useState<Protest[]>([])
+  const [officialDocuments, setOfficialDocuments] = useState<OfficialDocument[]>([])
   const [loadingDebts, setLoadingDebts] = useState(false)
+  const [loadingOfficialDocuments, setLoadingOfficialDocuments] = useState(false)
+  const [previewDocument, setPreviewDocument] = useState<OfficialDocument | null>(null)
 
   const isDebtorRole = session?.user.roles.includes("USER_DEBTOR")
   const isAnalystRole = session?.user.roles.includes("BANK_ANALYST")
@@ -36,9 +33,9 @@ export function LandingPage() {
   useEffect(() => {
     if (isAuthenticated && session?.user.numeroDocumento && isDebtorRole) {
       Promise.resolve().then(() => setLoadingDebts(true))
-      appService.getProtests({ documento: session.user.numeroDocumento })
+      appService.getProtests({ documento: session.user.numeroDocumento, estado: "VIGENTE", page: 0, size: 10 })
         .then((data) => {
-          setUserDebts(data)
+          setUserDebts(data.content)
         })
         .catch(() => {
           toast.error("Error al recuperar su estado de deudor.")
@@ -49,10 +46,21 @@ export function LandingPage() {
     }
   }, [isAuthenticated, session, isDebtorRole])
 
+  useEffect(() => {
+    if (isAuthenticated && isDebtorRole) {
+      setLoadingOfficialDocuments(true)
+      appService.getOfficialDocuments()
+        .then(setOfficialDocuments)
+        .catch(() => toast.error("No se pudieron cargar los documentos oficiales."))
+        .finally(() => setLoadingOfficialDocuments(false))
+    }
+  }, [isAuthenticated, isDebtorRole])
+
   // Get only active debts (VIGENTE)
   const activeDebts = userDebts.filter((d) => d.status === "VIGENTE")
 
   return (
+    <>
     <div className="flex-1 bg-slate-50/50">
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b bg-white py-20 sm:py-32">
@@ -269,25 +277,39 @@ export function LandingPage() {
                     {/* Formatos descargables requeridos */}
                     <div className="border-t border-slate-100 pt-4 mt-1 text-left">
                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Formatos Oficiales Requeridos</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadMockPDF("FUT_Levantamiento_Protesto.pdf", "FORMULARIO UNICO DE TRAMITE (FUT) - SOLICITUD DE LEVANTAMIENTO")}
-                          className="h-8 text-[10px] font-semibold text-slate-700 bg-slate-50 border-slate-200 hover:bg-slate-100 cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <Download className="size-3 text-slate-500" />
-                          Descargar FUT
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadMockPDF("Declaracion_Jurada_Pago_Deuda.pdf", "DECLARACION JURADA DE PAGO TOTAL DE DEUDA")}
-                          className="h-8 text-[10px] font-semibold text-slate-700 bg-slate-50 border-slate-200 hover:bg-slate-100 cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <Download className="size-3 text-slate-500" />
-                          Descargar DD.JJ.
-                        </Button>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {loadingOfficialDocuments ? (
+                          <>
+                            <div className="h-11 rounded-md bg-slate-100 animate-pulse" />
+                            <div className="h-11 rounded-md bg-slate-100 animate-pulse" />
+                          </>
+                        ) : officialDocuments.length === 0 ? (
+                          <p className="col-span-2 rounded-md border border-slate-200 bg-slate-50 p-2 text-[10px] text-slate-500">
+                            No hay formatos publicados.
+                          </p>
+                        ) : (
+                          officialDocuments.slice(0, 4).map((item) => (
+                            <div key={item.id} className="rounded-md border border-slate-200 bg-slate-50 p-2">
+                              <div className="flex items-start gap-2 text-[10px] font-semibold text-slate-700">
+                                <FileText className="mt-0.5 size-3 shrink-0 text-red-500" />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate">{item.title}</span>
+                                  <span className="block truncate text-[9px] font-normal text-slate-400">{formatBytes(item.sizeBytes)}</span>
+                                </span>
+                              </div>
+                              <div className="mt-2 grid grid-cols-2 gap-1.5">
+                                <Button variant="outline" size="sm" onClick={() => setPreviewDocument(item)} className="h-7 px-2 text-[10px]">
+                                  <Eye data-icon="inline-start" />
+                                  Ver
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => void appService.downloadOfficialDocument(item)} className="h-7 px-2 text-[10px]">
+                                  <Download data-icon="inline-start" />
+                                  Descargar
+                                </Button>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -484,5 +506,7 @@ export function LandingPage() {
         </div>
       </section>
     </div>
+    <OfficialDocumentPreviewDialog document={previewDocument} open={Boolean(previewDocument)} onOpenChange={(open) => { if (!open) setPreviewDocument(null) }} />
+    </>
   )
 }

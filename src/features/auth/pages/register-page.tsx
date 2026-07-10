@@ -1,6 +1,6 @@
 ﻿import { useState, type FormEvent } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Landmark, LoaderCircle, LockKeyhole, ArrowLeft } from "lucide-react"
+import { Landmark, LoaderCircle, LockKeyhole, ArrowLeft, Search, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert"
 import { Button } from "@/shared/components/ui/button"
@@ -23,14 +23,11 @@ export function RegisterPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
+  const [documentMessage, setDocumentMessage] = useState("")
+  const [validatingDocument, setValidatingDocument] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // Validation function
-  const validate = (): string | null => {
-    if (!nombreCompleto.trim()) return "El nombre completo es requerido."
-    if (!email.trim() || !email.includes("@")) return "Ingrese un correo electrónico válido."
-    
-    // Document validation
+  const validateDocumentNumber = (): string | null => {
     if (tipoDocumento === "DNI") {
       if (numeroDocumento.length !== 8) return "El DNI debe tener exactamente 8 dígitos."
     } else if (tipoDocumento === "RUC") {
@@ -40,11 +37,48 @@ export function RegisterPage() {
         return "El Carné de Extranjería debe tener entre 8 y 12 caracteres."
       }
     }
+    return null
+  }
 
+  const validate = (): string | null => {
+    if (!nombreCompleto.trim()) return "El nombre completo es requerido."
+    if (!email.trim() || !email.includes("@")) return "Ingrese un correo electrónico válido."
+    const documentError = validateDocumentNumber()
+    if (documentError) return documentError
     if (password.length < 8) return "La contraseña debe tener al menos 8 caracteres."
     if (password !== confirmPassword) return "Las contraseñas ingresadas no coinciden."
 
     return null
+  }
+
+  async function handleLookupDocument() {
+    setError("")
+    setDocumentMessage("")
+    const documentError = validateDocumentNumber()
+    if (documentError) {
+      setError(documentError)
+      return
+    }
+
+    setValidatingDocument(true)
+    try {
+      const result = await appService.lookupDebtor(tipoDocumento, numeroDocumento.trim())
+      if (result.found && result.nombreCompleto) {
+        setNombreCompleto(result.nombreCompleto)
+        if (result.email && !email.trim()) setEmail(result.email)
+        setDocumentMessage("Documento encontrado. Se completó el nombre asociado.")
+        toast.success("Documento encontrado en los registros.")
+      } else {
+        setDocumentMessage("No existe un deudor registrado con este documento. Puede continuar el registro manualmente.")
+        toast.info("Documento no encontrado en los registros actuales.")
+      }
+    } catch (reason) {
+      const errMsg = getErrorMessage(reason, "No fue posible validar el documento.")
+      setError(errMsg)
+      toast.error(errMsg)
+    } finally {
+      setValidatingDocument(false)
+    }
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -93,7 +127,7 @@ export function RegisterPage() {
             Obtenga acceso al panel de deudor público para consultar detalladamente sus protestos y tramitar levantamientos digitales adjuntando sus constancias de pago de forma oficial.
           </p>
         </div>
-        <p className="text-sm opacity-70">Proyecto académico · Datos exclusivamente simulados</p>
+        <p className="text-sm opacity-70">Registro ciudadano para trámites digitales</p>
       </section>
 
       {/* Form Column (Right) */}
@@ -104,7 +138,7 @@ export function RegisterPage() {
               <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Landmark /></div>
             </div>
             <CardTitle className="text-2xl font-bold">Crear Cuenta</CardTitle>
-            <CardDescription>Regístrese ingresando sus datos personales y documento de identidad.</CardDescription>
+            <CardDescription>El documento ingresado se asociará automáticamente con los protestos registrados por la Cámara.</CardDescription>
           </CardHeader>
           <CardContent>
             <form id="register-form" className="flex flex-col gap-4" onSubmit={handleSubmit}>
@@ -148,6 +182,7 @@ export function RegisterPage() {
                       onValueChange={(value) => {
                         setTipoDocumento(value as "DNI" | "RUC" | "CE")
                         setNumeroDocumento("")
+                        setDocumentMessage("")
                       }}
                     >
                       <SelectTrigger id="tipoDocumento">
@@ -173,13 +208,30 @@ export function RegisterPage() {
                         if (tipoDocumento === "DNI" || tipoDocumento === "RUC") {
                           setNumeroDocumento(val.replace(/\D/g, "").slice(0, tipoDocumento === "DNI" ? 8 : 11))
                         } else {
-                          setNumeroDocumento(val.slice(0, 12))
+                          setNumeroDocumento(val.replace(/\s/g, "").toUpperCase().slice(0, 12))
                         }
+                        setDocumentMessage("")
                       }} 
                       placeholder={tipoDocumento === "DNI" ? "8 dígitos" : tipoDocumento === "RUC" ? "11 dígitos" : "Entre 8 y 12 caracteres"} 
                       required 
                     />
                   </Field>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-slate-600">Valide el documento para completar el nombre si ya existe en los registros cargados.</p>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void handleLookupDocument()} disabled={validatingDocument || loading}>
+                      {validatingDocument ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : <Search data-icon="inline-start" />}
+                      Validar documento
+                    </Button>
+                  </div>
+                  {documentMessage ? (
+                    <p className="mt-2 flex items-start gap-1.5 text-xs text-slate-600">
+                      <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
+                      {documentMessage}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -1,4 +1,4 @@
-﻿export type Role = "CCI_ADMIN" | "CCI_STAFF" | "BANK_ANALYST" | "USER_DEBTOR"
+export type Role = "CCI_ADMIN" | "CCI_STAFF" | "BANK_ANALYST" | "USER_DEBTOR"
 
 export type RequestStatus =
   | "REGISTRADA"
@@ -34,9 +34,10 @@ export interface LoginCredentials {
   password: string
 }
 
-export interface ProtestFilters {
+export interface ProtestFilters extends PageQuery {
   documento?: string
   nombre?: string
+  estado?: Protest["status"]
 }
 
 export interface PageQuery {
@@ -54,8 +55,10 @@ export interface Protest {
   id: number
   documentNumber: string
   debtorName: string
+  financialEntityId: number
   financialEntity: string
   amount: number
+  currency: Currency
   registeredAt: string
   status: "VIGENTE" | "REGULARIZADO"
 }
@@ -101,6 +104,8 @@ export interface Analyst {
   code: string
   assigned: number
   active: boolean
+  entityId?: number
+  entityName?: string
 }
 
 export interface AuditEntry {
@@ -110,6 +115,28 @@ export interface AuditEntry {
   resource: string
   date: string
   detail: string
+}
+
+export interface OfficialDocument {
+  id: number
+  title: string
+  description?: string
+  filename: string
+  downloadUrl: string
+  sizeBytes: number
+  active: boolean
+  order: number
+  createdAt: string
+}
+
+export interface RequestDocument {
+  id: number
+  requestId: number
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  downloadUrl: string
+  createdAt: string
 }
 
 export interface Page<T> {
@@ -134,6 +161,46 @@ export interface DashboardSummary {
   recentRequests: RequestRecord[]
 }
 
+export interface ExcelValidationError {
+  row: number
+  field: string
+  value: string
+  message: string
+}
+
+export interface ExcelRowPreview {
+  row: number
+  numeroDocumento: string
+  nombreRazonSocial: string
+  entidad: string
+  numeroTitulo: string
+  tipoTitulo: string
+  fechaProtesto: string
+  moneda: Currency
+  monto: number
+  estado: Protest["status"]
+}
+
+export interface ExcelValidationResult {
+  valid: boolean
+  totalRows: number
+  validRows: number
+  errorRows: number
+  errors: ExcelValidationError[]
+  preview: ExcelRowPreview[]
+}
+
+export interface ExcelImportResult {
+  cargaId: number
+  filename: string
+  status: string
+  summary: string
+  totalRows: number
+  importedRows: number
+  errorRows: number
+  errors: ExcelValidationError[]
+}
+
 export interface RegisterInput {
   nombreCompleto: string
   email: string
@@ -142,3 +209,8 @@ export interface RegisterInput {
   numeroDocumento: string
 }
 
+export interface DebtorLookup {
+  found: boolean
+  nombreCompleto?: string
+  email?: string
+}
