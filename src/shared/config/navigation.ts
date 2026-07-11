@@ -1,4 +1,4 @@
-﻿import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import {
   BarChart3,
   Bell,
@@ -8,7 +8,6 @@ import {
   FileSpreadsheet,
   Gauge,
   ListChecks,
-  Users,
   Eye,
   FolderOpen,
 } from "lucide-react"
@@ -41,8 +40,7 @@ export const erpNavigation: readonly NavigationItem[] = [
   { label: "Dashboard", path: "/erp/dashboard", icon: Gauge },
   { label: "Protestos", path: "/erp/protestos", icon: FileSearch },
   { label: "Solicitudes", path: "/erp/solicitudes", icon: ListChecks },
-  { label: "Entidades", path: "/erp/entidades", icon: Building2 },
-  { label: "Analistas", path: "/erp/analistas", icon: Users },
+  { label: "Entidades y Analistas", path: "/erp/entidades", icon: Building2 },
   { label: "Reportes", path: "/erp/reportes", icon: BarChart3 },
 ]
 

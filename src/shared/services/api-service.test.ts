@@ -6,9 +6,10 @@ describe("API service contracts", () => {
   beforeEach(() => vi.restoreAllMocks())
 
   it("sends document and name as independent protest filters", async () => {
-    const get = vi.spyOn(apiClient, "get").mockResolvedValue({ data: [] })
-    await apiService.getProtests({ documento: "201", nombre: "Empresa" })
-    expect(get).toHaveBeenCalledWith("/protestos/consulta", { params: { documento: "201", nombre: "Empresa" } })
+    const get = vi.spyOn(apiClient, "get").mockResolvedValue({ data: { content: [], page: 1, size: 10, totalElements: 0, totalPages: 0 } })
+    const result = await apiService.getProtests({ documento: "201", nombre: "Empresa", estado: "VIGENTE", page: 1, size: 10 })
+    expect(get).toHaveBeenCalledWith("/protestos/consulta", { params: { documento: "201", nombre: "Empresa", estado: "VIGENTE", page: 1, size: 10 } })
+    expect(result.page).toBe(1)
   })
 
   it("obtains CSRF before cookie-based login", async () => {

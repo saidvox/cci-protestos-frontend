@@ -86,7 +86,7 @@ export function PublicLayout() {
       <footer className="border-t py-6">
         <div className="mx-auto max-w-6xl px-4 text-center text-sm text-muted-foreground sm:px-6">
           <p>© 2026 Cámara de Comercio, Industria y Turismo de Ica</p>
-          <p className="mt-1">Proyecto académico · Datos simulados</p>
+          <p className="mt-1">Canal digital institucional</p>
         </div>
       </footer>
       <Toaster richColors />

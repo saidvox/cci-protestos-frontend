@@ -74,7 +74,7 @@ export function ErpLoginPage() {
             Acceso restringido para el personal administrativo y auditoría institucional. Gestione entidades financieras, analistas de protestos, solicitudes de regularización y auditoría inmutable de la Cámara.
           </p>
         </div>
-        <p className="text-sm text-slate-400">Proyecto académico · Datos exclusivamente simulados</p>
+        <p className="text-sm text-slate-400">Plataforma institucional de gestión interna</p>
       </section>
 
       <section className="flex items-center justify-center p-4 sm:p-8">
