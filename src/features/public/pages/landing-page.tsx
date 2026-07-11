@@ -58,6 +58,7 @@ export function LandingPage() {
 
   // Get only active debts (VIGENTE)
   const activeDebts = userDebts.filter((d) => d.status === "VIGENTE")
+  const portalOfficialDocuments = officialDocuments.filter((document) => document.type !== "PLANTILLA_EXCEL")
 
   return (
     <>
@@ -283,12 +284,12 @@ export function LandingPage() {
                             <div className="h-11 rounded-md bg-slate-100 animate-pulse" />
                             <div className="h-11 rounded-md bg-slate-100 animate-pulse" />
                           </>
-                        ) : officialDocuments.length === 0 ? (
+                        ) : portalOfficialDocuments.length === 0 ? (
                           <p className="col-span-2 rounded-md border border-slate-200 bg-slate-50 p-2 text-[10px] text-slate-500">
                             No hay formatos publicados.
                           </p>
                         ) : (
-                          officialDocuments.slice(0, 4).map((item) => (
+                          portalOfficialDocuments.slice(0, 4).map((item) => (
                             <div key={item.id} className="rounded-md border border-slate-200 bg-slate-50 p-2">
                               <div className="flex items-start gap-2 text-[10px] font-semibold text-slate-700">
                                 <FileText className="mt-0.5 size-3 shrink-0 text-red-500" />
@@ -302,10 +303,12 @@ export function LandingPage() {
                                   <Eye data-icon="inline-start" />
                                   Ver
                                 </Button>
-                                <Button variant="outline" size="sm" onClick={() => void appService.downloadOfficialDocument(item)} className="h-7 px-2 text-[10px]">
-                                  <Download data-icon="inline-start" />
-                                  Descargar
-                                </Button>
+                                {item.type === "GUIA" ? null : (
+                                  <Button variant="outline" size="sm" onClick={() => void appService.downloadOfficialDocument(item)} className="h-7 px-2 text-[10px]">
+                                    <Download data-icon="inline-start" />
+                                    Descargar
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           ))
@@ -506,7 +509,7 @@ export function LandingPage() {
         </div>
       </section>
     </div>
-    <OfficialDocumentPreviewDialog document={previewDocument} open={Boolean(previewDocument)} onOpenChange={(open) => { if (!open) setPreviewDocument(null) }} />
+    <OfficialDocumentPreviewDialog document={previewDocument} open={Boolean(previewDocument)} onOpenChange={(open) => { if (!open) setPreviewDocument(null) }} showDownload={previewDocument?.type !== "GUIA"} />
     </>
   )
 }

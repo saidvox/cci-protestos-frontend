@@ -124,6 +124,7 @@ export interface OfficialDocument {
   filename: string
   downloadUrl: string
   sizeBytes: number
+  type: "FORMATO_REQUERIDO" | "GUIA" | "PLANTILLA_EXCEL"
   active: boolean
   order: number
   createdAt: string
@@ -199,6 +200,18 @@ export interface ExcelImportResult {
   importedRows: number
   errorRows: number
   errors: ExcelValidationError[]
+}
+
+export interface ExcelUploadRecord {
+  id: number
+  filename: string
+  uploadedAt: string
+  totalRows: number
+  importedRows: number
+  errorRows: number
+  status: "RECIBIDA" | "PROCESADA" | "CON_ERROR"
+  summary?: string
+  uploader: string
 }
 
 export interface RegisterInput {

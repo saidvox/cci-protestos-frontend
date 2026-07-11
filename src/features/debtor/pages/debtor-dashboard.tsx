@@ -104,6 +104,8 @@ export function DebtorDashboard() {
   const blockingRequest = relatedRequests.find((request) => blockingRequestStatuses.has(request.status))
   const editableRequest = relatedRequests.find((request) => editableRequestStatuses.has(request.status))
   const visibleProcessRequest = blockingRequest ?? editableRequest ?? relatedRequests[0]
+  const requiredOfficialDocuments = officialDocuments.filter((document) => document.type === "FORMATO_REQUERIDO")
+  const guideDocuments = officialDocuments.filter((document) => document.type === "GUIA")
 
   useEffect(() => {
     if (!selectedProtestId && activeProtests.length > 0) {
@@ -144,7 +146,7 @@ export function DebtorDashboard() {
       toast.error("Adjunte el voucher o comprobante de pago.")
       return
     }
-    const missingOfficialDocument = officialDocuments.find((document) => !officialDocumentFiles[document.id])
+    const missingOfficialDocument = requiredOfficialDocuments.find((document) => !officialDocumentFiles[document.id])
     if (missingOfficialDocument) {
       toast.error(`Adjunte el formato completado: ${missingOfficialDocument.title}`)
       return
@@ -163,7 +165,7 @@ export function DebtorDashboard() {
 
       const filesToUpload = [
         voucherFile,
-        ...officialDocuments
+        ...requiredOfficialDocuments
           .map((document) => officialDocumentFiles[document.id])
           .filter((file): file is File => Boolean(file)),
       ]
@@ -223,7 +225,8 @@ export function DebtorDashboard() {
               setOfficialDocumentFile={(documentId, file) => setOfficialDocumentFiles((current) => ({ ...current, [documentId]: file }))}
               resetKey={attachmentResetKey}
               loadingOfficialDocuments={loadingOfficialDocuments}
-              officialDocuments={officialDocuments}
+              officialDocuments={requiredOfficialDocuments}
+              guideDocuments={guideDocuments}
               onPreviewDocument={setPreviewDocument}
               blockingRequest={blockingRequest}
               editableRequest={editableRequest}
@@ -234,7 +237,7 @@ export function DebtorDashboard() {
         </div>
       </main>
 
-      <OfficialDocumentPreviewDialog document={previewDocument} open={Boolean(previewDocument)} onOpenChange={(open) => { if (!open) setPreviewDocument(null) }} />
+      <OfficialDocumentPreviewDialog document={previewDocument} open={Boolean(previewDocument)} onOpenChange={(open) => { if (!open) setPreviewDocument(null) }} showDownload={previewDocument?.type !== "GUIA"} />
     </>
   )
 }
@@ -408,6 +411,7 @@ function RegularizationCard({
   resetKey,
   loadingOfficialDocuments,
   officialDocuments,
+  guideDocuments,
   onPreviewDocument,
   blockingRequest,
   editableRequest,
@@ -431,6 +435,7 @@ function RegularizationCard({
   resetKey: number
   loadingOfficialDocuments: boolean
   officialDocuments: OfficialDocument[]
+  guideDocuments: OfficialDocument[]
   onPreviewDocument: (document: OfficialDocument) => void
   blockingRequest?: RequestRecord
   editableRequest?: RequestRecord
@@ -539,6 +544,7 @@ function RegularizationCard({
               voucherFile={voucherFile}
               setVoucherFile={setVoucherFile}
               officialDocuments={officialDocuments}
+              guideDocuments={guideDocuments}
               officialDocumentFiles={officialDocumentFiles}
               setOfficialDocumentFile={setOfficialDocumentFile}
               onPreviewDocument={onPreviewDocument}
@@ -581,6 +587,7 @@ function AttachmentsGrid({
   voucherFile,
   setVoucherFile,
   officialDocuments,
+  guideDocuments,
   officialDocumentFiles,
   setOfficialDocumentFile,
   onPreviewDocument,
@@ -591,6 +598,7 @@ function AttachmentsGrid({
   voucherFile: File | null
   setVoucherFile: (file: File | null) => void
   officialDocuments: OfficialDocument[]
+  guideDocuments: OfficialDocument[]
   officialDocumentFiles: Record<number, File | null>
   setOfficialDocumentFile: (documentId: number, file: File | null) => void
   onPreviewDocument: (document: OfficialDocument) => void
@@ -599,6 +607,29 @@ function AttachmentsGrid({
     <div className="min-w-0 overflow-hidden">
       <div className="mt-3 grid gap-2">
         <FileUploadSlot id="voucher-file" resetKey={resetKey} title="Voucher de pago" description="Comprobante emitido por la entidad financiera." file={voucherFile} required disabled={disabled} accept=".pdf,image/*" onFileChange={setVoucherFile} />
+
+        {guideDocuments.map((document) => (
+          <div key={document.id} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600">
+                <FileText className="size-3.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <p className="min-w-0 truncate text-xs font-bold leading-tight text-slate-900" title={document.title}>{document.title}</p>
+                  <span className="shrink-0 rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600">Guía</span>
+                </div>
+                <p className="mt-0.5 max-w-full truncate text-[10px] leading-snug text-slate-500" title={document.description || document.filename}>
+                  {document.description || document.filename}
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 px-3 text-xs text-slate-700" onClick={() => onPreviewDocument(document)}>
+                <Eye data-icon="inline-start" />
+                Ver guía
+              </Button>
+            </div>
+          </div>
+        ))}
 
         {loading ? (
           <>
@@ -699,6 +730,8 @@ function FileUploadSlot({
 }
 
 export function OfficialDocumentsCard({ loading, documents, onPreview }: { loading: boolean; documents: OfficialDocument[]; onPreview: (document: OfficialDocument) => void }) {
+  const visibleDocuments = documents.filter((document) => document.type !== "PLANTILLA_EXCEL")
+
   return (
     <Card className="border-indigo-100 bg-indigo-50/10 shadow-sm">
       <CardHeader className="p-5 pb-3">
@@ -714,13 +747,13 @@ export function OfficialDocumentsCard({ loading, documents, onPreview }: { loadi
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
           </>
-        ) : documents.length === 0 ? (
+        ) : visibleDocuments.length === 0 ? (
           <div className="rounded-md border border-dashed border-slate-300 bg-white p-4 text-center">
             <FileText className="mx-auto size-6 text-slate-400" />
             <p className="mt-2 text-xs font-medium text-slate-500">No hay documentos oficiales publicados.</p>
           </div>
         ) : (
-          documents.map((item) => (
+          visibleDocuments.map((item) => (
             <div key={item.id} className="rounded-md border border-slate-200 bg-white p-3">
               <div className="flex items-start gap-3">
                 <FileText className="mt-0.5 size-4 shrink-0 text-red-500" />
@@ -734,10 +767,12 @@ export function OfficialDocumentsCard({ loading, documents, onPreview }: { loadi
                   <Eye data-icon="inline-start" />
                   Ver
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => void appService.downloadOfficialDocument(item)} className="h-8 text-xs">
-                  <Download data-icon="inline-start" />
-                  Descargar
-                </Button>
+                {item.type === "GUIA" ? null : (
+                  <Button variant="outline" size="sm" onClick={() => void appService.downloadOfficialDocument(item)} className="h-8 text-xs">
+                    <Download data-icon="inline-start" />
+                    Descargar
+                  </Button>
+                )}
               </div>
             </div>
           ))

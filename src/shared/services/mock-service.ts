@@ -41,6 +41,7 @@ const defaultOfficialDocuments: OfficialDocument[] = [
     filename: "FUT_Levantamiento_Protesto.pdf",
     downloadUrl: "/api/documentos-tramite/1/download",
     sizeBytes: 145000,
+    type: "FORMATO_REQUERIDO",
     active: true,
     order: 1,
     createdAt: "2026-06-01T00:00:00Z",
@@ -52,6 +53,7 @@ const defaultOfficialDocuments: OfficialDocument[] = [
     filename: "Declaracion_Jurada_Pago_Deuda.pdf",
     downloadUrl: "/api/documentos-tramite/2/download",
     sizeBytes: 120000,
+    type: "FORMATO_REQUERIDO",
     active: true,
     order: 2,
     createdAt: "2026-06-01T00:00:00Z",
@@ -210,6 +212,7 @@ export const mockService: AppService = {
     URL.revokeObjectURL(url)
   },
   async uploadExcel() { await wait() },
+  async getExcelUploads() { await wait(); return [] },
   async validateExcel() { await wait(); return { valid: true, totalRows: 10, validRows: 10, errorRows: 0, errors: [], preview: [] } },
   async importExcel() { await wait(); return { cargaId: 1, filename: "plantilla-protestos-cci-datos-prueba.xlsx", status: "PROCESADA", summary: "Archivo importado correctamente", totalRows: 10, importedRows: 10, errorRows: 0, errors: [] } },
   async getOfficialDocuments(includeInactive = false) {
@@ -228,6 +231,7 @@ export const mockService: AppService = {
       filename: input.file.name,
       downloadUrl: `/api/documentos-tramite/${Date.now()}/download`,
       sizeBytes: input.file.size,
+      type: input.type ?? "FORMATO_REQUERIDO",
       active: true,
       order: input.order ?? items.length + 1,
       createdAt: new Date().toISOString(),
@@ -235,14 +239,11 @@ export const mockService: AppService = {
     setMockOfficialDocuments([item, ...items])
     return item
   },
-  async deactivateOfficialDocument(id) {
+  async deleteOfficialDocument(id) {
     await wait()
     const items = getMockOfficialDocuments()
-    const next = items.map((item) => item.id === id ? { ...item, active: false } : item)
+    const next = items.filter((item) => item.id !== id)
     setMockOfficialDocuments(next)
-    const item = next.find((value) => value.id === id)
-    if (!item) throw new Error("Documento no encontrado.")
-    return item
   },
   async downloadOfficialDocument(document) {
     await wait()
@@ -263,6 +264,12 @@ export const mockService: AppService = {
   async getEntities() { await wait(); return clone(entities) },
   async createEntity(input) { await wait(); return { id: Date.now(), ...input, active: true } },
   async updateEntity(id, input) { await wait(); return { id, ...input } },
+  async toggleEntityStatus(id, active) {
+    await wait()
+    const current = entities.find((item) => item.id === id)
+    if (!current) throw new Error("Entidad no encontrada.")
+    return { ...clone(current), active }
+  },
   async getAnalysts() { await wait(); return clone(analysts) },
   async createAnalyst(input) { 
     await wait(); 
@@ -273,6 +280,12 @@ export const mockService: AppService = {
     await wait(); 
     const ent = entities.find(e => e.id === input.entityId);
     return { id, ...input, assigned: 0, entityName: ent?.name } 
+  },
+  async toggleAnalystStatus(id, active) {
+    await wait()
+    const current = analysts.find((item) => item.id === id)
+    if (!current) throw new Error("Analista no encontrado.")
+    return { ...clone(current), active }
   },
   async getDebtorRequestsHistory(documentNumber) {
     await wait()

@@ -10,9 +10,10 @@ interface OfficialDocumentPreviewDialogProps {
   document: OfficialDocument | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  showDownload?: boolean
 }
 
-export function OfficialDocumentPreviewDialog({ document, open, onOpenChange }: OfficialDocumentPreviewDialogProps) {
+export function OfficialDocumentPreviewDialog({ document, open, onOpenChange, showDownload = true }: OfficialDocumentPreviewDialogProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
@@ -94,10 +95,12 @@ export function OfficialDocumentPreviewDialog({ document, open, onOpenChange }: 
               Abrir
             </Button>
           ) : null}
-          <Button disabled={!document} onClick={() => { if (document) void appService.downloadOfficialDocument(document) }}>
-            <Download data-icon="inline-start" />
-            Descargar
-          </Button>
+          {showDownload ? (
+            <Button disabled={!document} onClick={() => { if (document) void appService.downloadOfficialDocument(document) }}>
+              <Download data-icon="inline-start" />
+              Descargar
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

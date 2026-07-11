@@ -27,7 +27,7 @@ export interface AnalystDto { id: number; codigo: string; nombre: string; email:
 export interface ReportDto { total: number; porEstado: Partial<Record<RequestStatus, number>> }
 export interface DashboardDto { total: number; pendientes: number; aprobadas: number; entidadesActivas: number; porEstado: Partial<Record<RequestStatus, number>>; solicitudesRecientes: RequestDto[] }
 export interface AuditDto { id: number; actor: string; accion: string; recurso: string; recursoId: string | null; detalle: string; fecha: string }
-export interface OfficialDocumentDto { id: number; titulo: string; descripcion: string | null; filename: string; downloadUrl: string; sizeBytes: number; activo: boolean; orden: number; creadoEn: string }
+export interface OfficialDocumentDto { id: number; titulo: string; descripcion: string | null; filename: string; downloadUrl: string; sizeBytes: number; tipo?: OfficialDocument["type"]; activo: boolean; orden: number; creadoEn: string }
 export interface RequestDocumentDto { id: number; solicitudId: number; filename: string; mimeType: string; sizeBytes: number; downloadUrl: string; creadoEn: string }
 export interface PageDto<T> { content: T[]; page: number; size: number; totalElements: number; totalPages: number }
 
@@ -55,6 +55,6 @@ export const adaptAnalyst = (dto: AnalystDto): Analyst => ({ id: dto.id, code: d
 export const adaptReport = (dto: ReportDto): RequestReport => ({ total: dto.total, byStatus: dto.porEstado })
 export const adaptDashboard = (dto: DashboardDto): DashboardSummary => ({ total: dto.total, pending: dto.pendientes, approved: dto.aprobadas, activeEntities: dto.entidadesActivas, byStatus: dto.porEstado, recentRequests: dto.solicitudesRecientes.map(adaptRequest) })
 export const adaptAudit = (dto: AuditDto): AuditEntry => ({ id: dto.id, actor: dto.actor, action: dto.accion, resource: dto.recurso, date: dto.fecha, detail: dto.detalle })
-export const adaptOfficialDocument = (dto: OfficialDocumentDto): OfficialDocument => ({ id: dto.id, title: dto.titulo, description: dto.descripcion ?? undefined, filename: dto.filename, downloadUrl: dto.downloadUrl, sizeBytes: dto.sizeBytes, active: dto.activo, order: dto.orden, createdAt: dto.creadoEn })
+export const adaptOfficialDocument = (dto: OfficialDocumentDto): OfficialDocument => ({ id: dto.id, title: dto.titulo, description: dto.descripcion ?? undefined, filename: dto.filename, downloadUrl: dto.downloadUrl, sizeBytes: dto.sizeBytes, type: dto.tipo ?? "FORMATO_REQUERIDO", active: dto.activo, order: dto.orden, createdAt: dto.creadoEn })
 export const adaptRequestDocument = (dto: RequestDocumentDto): RequestDocument => ({ id: dto.id, requestId: dto.solicitudId, filename: dto.filename, mimeType: dto.mimeType, sizeBytes: dto.sizeBytes, downloadUrl: dto.downloadUrl, createdAt: dto.creadoEn })
 export const adaptPage = <TDto, T>(dto: PageDto<TDto>, adapter: (item: TDto) => T): Page<T> => ({ ...dto, content: dto.content.map(adapter) })

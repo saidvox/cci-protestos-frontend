@@ -40,7 +40,7 @@ export const erpNavigation: readonly NavigationItem[] = [
   { label: "Dashboard", path: "/erp/dashboard", icon: Gauge },
   { label: "Protestos", path: "/erp/protestos", icon: FileSearch },
   { label: "Solicitudes", path: "/erp/solicitudes", icon: ListChecks },
-  { label: "Entidades y Analistas", path: "/erp/entidades", icon: Building2 },
+  { label: "Socios Financieros", path: "/erp/entidades", icon: Building2 },
   { label: "Reportes", path: "/erp/reportes", icon: BarChart3 },
 ]
 
