@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useEffect, useState } from "react"
+import { type FormEvent, useEffect, useState } from "react"
 import { Banknote, CheckCircle2, ClipboardList, Download, Eye, FileText, Loader2, LockKeyhole, Send, ShieldAlert, Upload, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/shared/components/ui/button"
@@ -191,7 +191,7 @@ export function DebtorDashboard() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6">
         <section className="mb-4 grid gap-4 sm:grid-cols-3">
           <SummaryTile icon={<FileText className="size-5" />} label="Protestos vigentes" value={loadingProtests ? "..." : String(activeProtests.length)} tone={canRegularize ? "danger" : "success"} />
           <SummaryTile icon={<Banknote className="size-5" />} label="Monto pendiente" value={loadingProtests ? "..." : totalDebtLabel} tone={canRegularize ? "danger" : "neutral"} />
@@ -810,7 +810,6 @@ function ProcessNote({ request }: { request?: RequestRecord }) {
     { title: "Solicitud enviada", fallback: "Registrada" },
     { title: "Revisión Cámara", fallback: "En revisión" },
     { title: "Validación entidad financiera", fallback: "En revisión" },
-    { title: "Levantamiento confirmado", fallback: "Por confirmar" },
   ]
   const steps = baseSteps.map((step, index) => {
     const tone = requestStepTone(request, index)
@@ -840,7 +839,7 @@ function ProcessNote({ request }: { request?: RequestRecord }) {
         {request ? <CardDescription className="text-xs">Seguimiento de {request.code}</CardDescription> : null}
       </CardHeader>
       <CardContent className="p-4">
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-3">
           {steps.map((step, index) => (
             <div key={step.title} className={`relative rounded-lg border p-4 ${toneClass[step.tone]}`}>
               {index < steps.length - 1 ? <span className="absolute left-[calc(100%-2px)] top-7 hidden h-px w-6 border-t border-dashed border-slate-200 sm:block" /> : null}

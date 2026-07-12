@@ -347,32 +347,42 @@ function RevisionTab() {
             </div>
           </section>
 
-          <Field className="space-y-1.5 text-left">
-            <FieldLabel htmlFor="revision-observation" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Observación / Anotaciones adicionales
-            </FieldLabel>
-            <Textarea 
-              id="revision-observation" 
-              placeholder="Ingrese las observaciones, motivos de rechazo o anotaciones correspondientes..." 
-              className="min-h-[85px] text-xs focus-visible:ring-indigo-500 rounded-lg" 
-              value={observation} 
-              onChange={(event) => setObservation(event.target.value)} 
-            />
-          </Field>
-          
-          <DialogFooter className="gap-2 sm:gap-0 mt-2">
-            <Button variant="destructive" size="sm" className="text-xs cursor-pointer px-4" onClick={() => void change("RECHAZADA")}>
-              <X className="mr-1.5 size-3.5" />
-              Rechazar
-            </Button>
-            <Button variant="outline" size="sm" className="text-xs cursor-pointer px-4" onClick={() => void change("OBSERVADA_CCI")}>
-              Observar
-            </Button>
-            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs text-white cursor-pointer px-4 font-semibold shadow-sm" onClick={() => void change("DERIVADA_ENTIDAD")}>
-              <Check className="mr-1.5 size-3.5" />
-              Enviar al analista
-            </Button>
-          </DialogFooter>
+          {selected && !["APROBADA_ENTIDAD", "FINALIZADA", "LEVANTAMIENTO_PROCESADO", "RECHAZADA"].includes(selected.status) ? (
+            <>
+              <Field className="space-y-1.5 text-left">
+                <FieldLabel htmlFor="revision-observation" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Observación / Anotaciones adicionales
+                </FieldLabel>
+                <Textarea 
+                  id="revision-observation" 
+                  placeholder="Ingrese las observaciones, motivos de rechazo o anotaciones correspondientes..." 
+                  className="min-h-[85px] text-xs focus-visible:ring-indigo-500 rounded-lg" 
+                  value={observation} 
+                  onChange={(event) => setObservation(event.target.value)} 
+                />
+              </Field>
+              
+              <DialogFooter className="gap-2 sm:gap-0 mt-2">
+                <Button variant="destructive" size="sm" className="text-xs cursor-pointer px-4" onClick={() => void change("RECHAZADA")}>
+                  <X className="mr-1.5 size-3.5" />
+                  Rechazar
+                </Button>
+                <Button variant="outline" size="sm" className="text-xs cursor-pointer px-4" onClick={() => void change("OBSERVADA_CCI")}>
+                  Observar
+                </Button>
+                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs text-white cursor-pointer px-4 font-semibold shadow-sm" onClick={() => void change("DERIVADA_ENTIDAD")}>
+                  <Check className="mr-1.5 size-3.5" />
+                  Enviar al analista
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <DialogFooter className="gap-2 sm:gap-0 mt-2">
+              <Button variant="outline" size="sm" className="text-xs cursor-pointer px-4" onClick={() => setSelected(null)}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
       <RequestDocumentPreviewDialog document={previewRequestDocument} open={Boolean(previewRequestDocument)} onOpenChange={(open) => { if (!open) setPreviewRequestDocument(null) }} />

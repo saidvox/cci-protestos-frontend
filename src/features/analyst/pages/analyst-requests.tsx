@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from "react"
-import { Check, Eye, RefreshCw, X, AlertCircle, FileText, Search } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Check, Eye, RefreshCw, X, AlertCircle, FileText, Search, Download } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert"
 import { Button } from "@/shared/components/ui/button"
@@ -14,7 +14,7 @@ import { PageHeader } from "@/shared/components/shared/page-header"
 import { PaginationControls } from "@/shared/components/shared/pagination-controls"
 import { StatusBadge } from "@/shared/components/shared/status-badge"
 import { appService } from "@/shared/services/service-factory"
-import type { Page, RequestRecord, RequestStatus } from "@/shared/types/domain"
+import type { Page, RequestRecord, RequestStatus, RequestDocument } from "@/shared/types/domain"
 
 const emptyPage: Page<RequestRecord> = { content: [], page: 0, size: 10, totalElements: 0, totalPages: 0 }
 
@@ -28,6 +28,11 @@ export function AnalystRequests() {
   const [error, setError] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [reload, setReload] = useState(0)
+
+  const [documents, setDocuments] = useState<RequestDocument[]>([])
+  const [docsLoading, setDocsLoading] = useState(false)
+  const [previewDocument, setPreviewDocument] = useState<RequestDocument | null>(null)
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false)
 
   useEffect(() => {
     appService
@@ -67,9 +72,31 @@ export function AnalystRequests() {
   }
 
   function handleSelect(item: RequestRecord) {
-    setSelected(item)
     setObservation(item.observation ?? "")
     setShowObservationField(false)
+
+    setDocsLoading(true)
+    setDocuments([])
+    appService.getRequestDocuments(item.id)
+      .then(setDocuments)
+      .catch(() => toast.error("Error al cargar los documentos de sustento."))
+      .finally(() => setDocsLoading(false))
+
+    if (item.status === "DERIVADA_ENTIDAD") {
+      appService.updateRequestStatus(item.id, "EN_REVISION_ANALISTA", "", undefined, item.version)
+        .then((updated) => {
+          setData(prev => ({
+            ...prev,
+            content: prev.content.map(x => x.id === item.id ? updated : x)
+          }))
+          setSelected(updated)
+        })
+        .catch(() => {
+          setSelected(item)
+        })
+    } else {
+      setSelected(item)
+    }
   }
 
   return (
@@ -222,26 +249,47 @@ export function AnalystRequests() {
                 </div>
               </div>
 
-              {/* Simulated Attachment File */}
+              {/* Archivos de Sustento Adjuntos */}
               <div className="border border-indigo-100 rounded-lg p-3 bg-indigo-50/20">
-                <h4 className="text-xs font-semibold text-indigo-950 flex items-center gap-1.5 mb-1.5">
+                <h4 className="text-xs font-semibold text-indigo-950 flex items-center gap-1.5 mb-2">
                   <ShieldCheck className="h-4 w-4 text-indigo-600" />
-                  Archivo de Sustento Adjunto
+                  Documentos de Sustento Adjuntos
                 </h4>
-                <div className="flex items-center justify-between text-xs bg-white p-2 rounded border border-indigo-100/50">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-indigo-500" />
-                    <div>
-                      <span className="font-medium text-slate-700 block truncate max-w-[200px]">
-                        Constancia_No_Adeudo_{selected.documentNumber}.pdf
-                      </span>
-                      <span className="text-[10px] text-slate-400">1.8 MB • Firma Digital Validada</span>
-                    </div>
+                {docsLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-10 w-full" />
                   </div>
-                  <Button variant="ghost" size="sm" className="text-indigo-600 font-semibold text-[11px] h-7 px-2 cursor-pointer hover:bg-indigo-50" onClick={() => toast.info("Visualizando documento de sustento simulado.")}>
-                    Ver PDF
-                  </Button>
-                </div>
+                ) : documents.length === 0 ? (
+                  <div className="text-xs text-slate-500 text-center py-4 bg-white rounded border border-dashed">
+                    No se adjuntaron documentos de sustento.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {documents.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between text-xs bg-white p-2 rounded border border-indigo-100/50">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <FileText className="h-5 w-5 text-indigo-500 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <span className="font-medium text-slate-700 block truncate" title={doc.filename}>
+                              {doc.filename}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {(doc.sizeBytes / 1024).toFixed(1)} KB • Creado el {new Date(doc.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-indigo-600 font-semibold text-[11px] h-7 px-2 cursor-pointer hover:bg-indigo-50"
+                          onClick={() => setPreviewDocument(doc)}
+                        >
+                          Ver Documento
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Observation Textarea if requested or observing */}
@@ -312,7 +360,7 @@ export function AnalystRequests() {
                 <Button
                   size="sm"
                   className="bg-emerald-600 hover:bg-emerald-700 text-xs cursor-pointer text-white"
-                  onClick={() => handleResolve("APROBADA_ENTIDAD")}
+                  onClick={() => setShowApproveConfirm(true)}
                 >
                   <Check className="mr-1 h-3.5 w-3.5" />
                   Aprobar Firma
@@ -322,7 +370,110 @@ export function AnalystRequests() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Approval Confirmation Dialog */}
+      <Dialog open={showApproveConfirm} onOpenChange={setShowApproveConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-slate-950 font-bold text-sm">Confirmar Aprobación</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              ¿Está seguro de que desea aprobar la solicitud <strong>{selected?.code}</strong>? Esta acción actualizará el estado y notificará al deudor.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+            <Button variant="ghost" size="sm" onClick={() => setShowApproveConfirm(false)} className="text-xs">
+              Cancelar
+            </Button>
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-xs text-white cursor-pointer" onClick={() => {
+              setShowApproveConfirm(false)
+              handleResolve("APROBADA_ENTIDAD")
+            }}>
+              Sí, Aprobar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Preview Dialog */}
+      <RequestDocumentPreviewDialog
+        document={previewDocument}
+        open={Boolean(previewDocument)}
+        onOpenChange={(open) => { if (!open) setPreviewDocument(null) }}
+      />
     </div>
+  )
+}
+
+function RequestDocumentPreviewDialog({ document, open, onOpenChange }: { document: RequestDocument | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [url, setUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    if (!document || !open) {
+      setUrl(null)
+      setError(false)
+      return
+    }
+
+    let active = true
+    let objectUrl: string | null = null
+    setLoading(true)
+    setError(false)
+
+    appService
+      .previewRequestDocument(document)
+      .then((blob) => {
+        if (!active) return
+        objectUrl = URL.createObjectURL(blob)
+        setUrl(objectUrl)
+      })
+      .catch(() => {
+        if (active) setError(true)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [document, open])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>{document?.filename ?? "Documento"}</DialogTitle>
+          <DialogDescription className="text-xs">
+            {document ? `${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB` : "Archivo adjunto"}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="min-h-[520px] overflow-hidden rounded-lg border bg-slate-50">
+          {loading ? (
+            <div className="flex h-[520px] items-center justify-center">
+              <RefreshCw className="size-5 animate-spin text-slate-400" />
+            </div>
+          ) : error || !url ? (
+            <div className="flex h-[520px] flex-col items-center justify-center text-sm text-slate-500">
+              <FileText className="mb-2 size-8 text-slate-300" />
+              No se pudo previsualizar el documento.
+            </div>
+          ) : document?.mimeType.startsWith("image/") ? (
+            <img src={url} alt={document.filename} className="h-[520px] w-full object-contain" />
+          ) : (
+            <iframe title={document?.filename ?? "Documento"} src={url} className="h-[520px] w-full" />
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { if (document) void appService.downloadRequestDocument(document) }}>
+            <Download className="mr-1 h-3.5 w-3.5" />
+            Descargar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
