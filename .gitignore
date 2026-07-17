@@ -34,3 +34,4 @@ test-results
 # Local Codex skills
 .agents/
 skills-lock.json
+.env*
