@@ -13,10 +13,12 @@ import { getHomeRoute } from "@/shared/lib/role-redirect"
 import { getErrorMessage } from "@/shared/lib/utils"
 import type { LoginCredentials } from "@/shared/types/domain"
 
+const DEMO_ENABLED = import.meta.env.VITE_ENABLE_DEMO === "true"
+
 export function LoginPage() {
   const { session, isAuthenticated, authenticate, acceptSession, loading: authLoading } = useAuth()
-  const [identifier, setIdentifier] = useState(DEMO_PUBLIC_ACCOUNTS.debtor.email)
-  const [password, setPassword] = useState(DEMO_PUBLIC_ACCOUNTS.debtor.password)
+  const [identifier, setIdentifier] = useState(DEMO_ENABLED ? DEMO_PUBLIC_ACCOUNTS.debtor.email : "")
+  const [password, setPassword] = useState(DEMO_ENABLED ? DEMO_PUBLIC_ACCOUNTS.debtor.password : "")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -60,7 +62,7 @@ export function LoginPage() {
     await loginWithCredentials({ email: identifier, password })
   }
 
-  async function useDemoAccount(credentials: LoginCredentials) {
+  async function loginWithDemoAccount(credentials: LoginCredentials) {
     setIdentifier(credentials.email)
     setPassword(credentials.password)
     await loginWithCredentials(credentials)
@@ -114,17 +116,17 @@ export function LoginPage() {
                 </Link>
               </p>
 
-              <div className="flex flex-col gap-2 border-t pt-2">
+              {DEMO_ENABLED ? <div className="flex flex-col gap-2 border-t pt-2">
                 <p className="text-center text-xs font-semibold text-muted-foreground">Accesos rápidos para demostración:</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" variant="outline" size="sm" className="cursor-pointer text-xs" disabled={loading} onClick={() => void useDemoAccount(DEMO_PUBLIC_ACCOUNTS.debtor)}>
+                  <Button type="button" variant="outline" size="sm" className="cursor-pointer text-xs" disabled={loading} onClick={() => void loginWithDemoAccount(DEMO_PUBLIC_ACCOUNTS.debtor)}>
                     Deudor de prueba
                   </Button>
-                  <Button type="button" variant="outline" size="sm" className="cursor-pointer text-xs" disabled={loading} onClick={() => void useDemoAccount(DEMO_PUBLIC_ACCOUNTS.analyst)}>
+                  <Button type="button" variant="outline" size="sm" className="cursor-pointer text-xs" disabled={loading} onClick={() => void loginWithDemoAccount(DEMO_PUBLIC_ACCOUNTS.analyst)}>
                     Analista de prueba
                   </Button>
                 </div>
-              </div>
+              </div> : null}
             </form>
           </CardContent>
           <CardFooter className="flex flex-col items-start gap-3">

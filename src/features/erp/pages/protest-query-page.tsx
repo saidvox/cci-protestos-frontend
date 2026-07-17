@@ -44,7 +44,7 @@ export function ProtestQueryPage() {
   const [importing, setImporting] = useState(false)
   const [dragActive, setDragActive] = useState(false)
 
-  const loadProtests = () => {
+  useEffect(() => {
     setError(false)
     setLoading(true)
     appService.getProtests({
@@ -60,10 +60,6 @@ export function ProtestQueryPage() {
         toast.error("No se pudo cargar el listado de protestos.")
       })
       .finally(() => setLoading(false))
-  }
-
-  useEffect(() => {
-    loadProtests()
   }, [page, searchDoc, searchName, filterStatus, reload])
 
   const updateSearchDoc = (value: string) => {

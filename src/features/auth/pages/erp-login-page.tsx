@@ -13,10 +13,12 @@ import { getHomeRoute } from "@/shared/lib/role-redirect"
 import { getErrorMessage } from "@/shared/lib/utils"
 import type { LoginCredentials } from "@/shared/types/domain"
 
+const DEMO_ENABLED = import.meta.env.VITE_ENABLE_DEMO === "true"
+
 export function ErpLoginPage() {
   const { session, isAuthenticated, authenticate, acceptSession, loading: authLoading } = useAuth()
-  const [email, setEmail] = useState(DEMO_ERP_ACCOUNTS.admin.email)
-  const [password, setPassword] = useState(DEMO_ERP_ACCOUNTS.admin.password)
+  const [email, setEmail] = useState(DEMO_ENABLED ? DEMO_ERP_ACCOUNTS.admin.email : "")
+  const [password, setPassword] = useState(DEMO_ENABLED ? DEMO_ERP_ACCOUNTS.admin.password : "")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -54,7 +56,7 @@ export function ErpLoginPage() {
     await loginWithCredentials({ email, password })
   }
 
-  async function useDemoAccount(credentials: LoginCredentials) {
+  async function loginWithDemoAccount(credentials: LoginCredentials) {
     setEmail(credentials.email)
     setPassword(credentials.password)
     await loginWithCredentials(credentials)
@@ -102,22 +104,22 @@ export function ErpLoginPage() {
                 {loading ? "Ingresando al ERP..." : "Ingresar al ERP"}
               </Button>
 
-              <div className="flex flex-col gap-2 border-t pt-2">
+              {DEMO_ENABLED ? <div className="flex flex-col gap-2 border-t pt-2">
                 <p className="text-center text-xs font-semibold text-muted-foreground">Accesos rápidos para demostración:</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" variant="outline" size="sm" className="cursor-pointer border-amber-200 text-xs hover:bg-amber-50 hover:text-amber-800" disabled={loading} onClick={() => void useDemoAccount(DEMO_ERP_ACCOUNTS.admin)}>
+                  <Button type="button" variant="outline" size="sm" className="cursor-pointer border-amber-200 text-xs hover:bg-amber-50 hover:text-amber-800" disabled={loading} onClick={() => void loginWithDemoAccount(DEMO_ERP_ACCOUNTS.admin)}>
                     Admin CCI
                   </Button>
-                  <Button type="button" variant="outline" size="sm" className="cursor-pointer border-amber-200 text-xs hover:bg-amber-50 hover:text-amber-800" disabled={loading} onClick={() => void useDemoAccount(DEMO_ERP_ACCOUNTS.staff)}>
+                  <Button type="button" variant="outline" size="sm" className="cursor-pointer border-amber-200 text-xs hover:bg-amber-50 hover:text-amber-800" disabled={loading} onClick={() => void loginWithDemoAccount(DEMO_ERP_ACCOUNTS.staff)}>
                     Staff CCI
                   </Button>
                 </div>
-              </div>
+              </div> : null}
             </form>
           </CardContent>
           <CardFooter className="flex flex-col items-start gap-3">
             <Separator />
-            <FieldDescription>Demo: usa admin@demo.local o staff@demo.local con la contraseña "password".</FieldDescription>
+            <FieldDescription>Acceso exclusivo para personal autorizado de la Cámara de Comercio de Ica.</FieldDescription>
           </CardFooter>
         </Card>
       </section>

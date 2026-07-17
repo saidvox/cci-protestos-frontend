@@ -31,6 +31,16 @@ function mockGuest() {
   })
 }
 
+async function fillPublicCredentials() {
+  await userEvent.type(screen.getByLabelText(/DNI, RUC o correo/i), "usuario@test.local")
+  await userEvent.type(screen.getByLabelText(/Contraseña/i), "Password1!")
+}
+
+async function fillErpCredentials() {
+  await userEvent.type(screen.getByLabelText(/Correo institucional/i), "admin@test.local")
+  await userEvent.type(screen.getByLabelText(/Contraseña/i), "Password1!")
+}
+
 describe("login entrypoints", () => {
   afterEach(() => {
     cleanup()
@@ -42,6 +52,7 @@ describe("login entrypoints", () => {
     authenticate.mockResolvedValue(sessionFor("BANK_ANALYST"))
 
     render(<MemoryRouter><LoginPage /></MemoryRouter>)
+    await fillPublicCredentials()
     await userEvent.click(screen.getByRole("button", { name: /^Iniciar sesi/i }))
 
     expect(acceptSession).toHaveBeenCalledWith(expect.objectContaining({
@@ -54,6 +65,7 @@ describe("login entrypoints", () => {
     authenticate.mockResolvedValue(sessionFor("CCI_ADMIN"))
 
     render(<MemoryRouter><LoginPage /></MemoryRouter>)
+    await fillPublicCredentials()
     await userEvent.click(screen.getByRole("button", { name: /^Iniciar sesi/i }))
 
     expect(await screen.findByText(/Para ingresar al ERP/)).toBeInTheDocument()
@@ -65,6 +77,7 @@ describe("login entrypoints", () => {
     authenticate.mockResolvedValue(sessionFor("CCI_STAFF"))
 
     render(<MemoryRouter><ErpLoginPage /></MemoryRouter>)
+    await fillErpCredentials()
     await userEvent.click(screen.getByRole("button", { name: /^Ingresar al ERP$/i }))
 
     expect(acceptSession).toHaveBeenCalledWith(expect.objectContaining({
@@ -77,6 +90,7 @@ describe("login entrypoints", () => {
     authenticate.mockResolvedValue(sessionFor("USER_DEBTOR"))
 
     render(<MemoryRouter><ErpLoginPage /></MemoryRouter>)
+    await fillErpCredentials()
     await userEvent.click(screen.getByRole("button", { name: /^Ingresar al ERP$/i }))
 
     expect(await screen.findByText(/no tiene permisos/)).toBeInTheDocument()

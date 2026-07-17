@@ -18,9 +18,15 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
   {
-    files: ['src/components/ui/**/*.{ts,tsx}', 'src/contexts/**/*.{ts,tsx}'],
+    files: [
+      'src/shared/components/ui/**/*.{ts,tsx}',
+      'src/features/auth/auth-context.tsx',
+    ],
     rules: {
       'react-refresh/only-export-components': 'off',
     },

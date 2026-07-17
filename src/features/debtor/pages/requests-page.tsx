@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { Eye, RefreshCw, Plus, Send } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert"
@@ -15,7 +15,7 @@ import { StatusBadge } from "@/shared/components/shared/status-badge"
 import { NewRequestDialog } from "@/shared/components/shared/new-request-dialog"
 import { UploadCard } from "@/shared/components/shared/upload-card"
 import { appService } from "@/shared/services/service-factory"
-import type { Page, RequestRecord, RequestDocument } from "@/shared/types/domain"
+import type { Currency, FinancialEntity, Page, RequestDocument, RequestRecord, RequestType } from "@/shared/types/domain"
 
 const formatBytes = (bytes: number) => {
   if (!bytes) return "0 KB"
@@ -273,13 +273,13 @@ interface CorrectionFormProps {
 }
 
 function CorrectionForm({ request, onFinished, onCancel }: CorrectionFormProps) {
-  const [type, setType] = useState<any>(request.type)
+  const [type, setType] = useState<RequestType>(request.type)
   const [entityId, setEntityId] = useState("")
-  const [entities, setEntities] = useState<any[]>([])
+  const [entities, setEntities] = useState<FinancialEntity[]>([])
   const [reason, setReason] = useState(request.reason)
   const [documentNumber, setDocumentNumber] = useState(request.documentNumber)
   const [amount, setAmount] = useState(String(request.amount))
-  const [currency, setCurrency] = useState<any>(request.currency)
+  const [currency, setCurrency] = useState<Currency>(request.currency)
   const [loading, setLoading] = useState(false)
 
   const [docs, setDocs] = useState<RequestDocument[]>([])
@@ -315,7 +315,7 @@ function CorrectionForm({ request, onFinished, onCancel }: CorrectionFormProps) 
     }
   }
 
-  async function submit(event: any) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const parsed = Number(amount)
     if (
@@ -355,7 +355,7 @@ function CorrectionForm({ request, onFinished, onCancel }: CorrectionFormProps) 
           <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Tipo de trámite</label>
           <select 
             value={type} 
-            onChange={(e) => setType(e.target.value as any)}
+            onChange={(e) => setType(e.target.value as RequestType)}
             className="w-full text-xs rounded border border-slate-200 p-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
           >
             <option value="REGISTRO_PROTESTO">Registro de protesto</option>
@@ -405,7 +405,7 @@ function CorrectionForm({ request, onFinished, onCancel }: CorrectionFormProps) 
           <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Moneda</label>
           <select 
             value={currency} 
-            onChange={(e) => setCurrency(e.target.value as any)}
+            onChange={(e) => setCurrency(e.target.value as Currency)}
             className="w-full text-xs rounded border border-slate-200 p-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
           >
             <option value="PEN">PEN</option>
