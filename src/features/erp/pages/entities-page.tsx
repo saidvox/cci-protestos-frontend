@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react"
-import { Copy, Eye, EyeOff, KeyRound, Link2 } from "lucide-react"
+import { Copy, Eye, EyeOff, KeyRound, Link2, RotateCcw } from "lucide-react"
 import { Building2, Edit, Landmark, Plus, Power, PowerOff, Search, User, UsersRound } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/shared/components/ui/badge"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/components/ui/alert-dialog"
 import { Button } from "@/shared/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog"
@@ -39,6 +40,7 @@ export function EntitiesPage() {
   const [busyAnalystId, setBusyAnalystId] = useState<number | null>(null)
   const [analystInvitation, setAnalystInvitation] = useState<AnalystInvitation | null>(null)
   const [resettingAnalyst, setResettingAnalyst] = useState<Analyst | null>(null)
+  const [reactivatingAnalyst, setReactivatingAnalyst] = useState<Analyst | null>(null)
   const [showResetPassword, setShowResetPassword] = useState(false)
   const isAdmin = session?.user.roles.includes("CCI_ADMIN") ?? false
 
@@ -158,6 +160,22 @@ export function EntitiesPage() {
       toast.success("Se generó un nuevo enlace y se revocaron los anteriores.")
     } catch (error) {
       toast.error(getErrorMessage(error, "No fue posible generar la invitación."))
+    } finally {
+      setBusyAnalystId(null)
+    }
+  }
+
+  async function handleRestartActivation() {
+    if (!reactivatingAnalyst) return
+    setBusyAnalystId(reactivatingAnalyst.id)
+    try {
+      const invitation = await appService.restartAnalystActivation(reactivatingAnalyst.id)
+      setAnalysts((current) => current.map((item) => item.id === reactivatingAnalyst.id ? invitation.analyst : item))
+      setReactivatingAnalyst(null)
+      setAnalystInvitation(invitation)
+      toast.success("Activación reiniciada. El acceso anterior quedó invalidado.")
+    } catch (error) {
+      toast.error(getErrorMessage(error, "No fue posible reiniciar la activación."))
     } finally {
       setBusyAnalystId(null)
     }
@@ -531,6 +549,18 @@ export function EntitiesPage() {
                             Contraseña
                           </Button>
                         )}
+                        {isAdmin && item.accessStatus !== "PENDING_ACTIVATION" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busyAnalystId === item.id}
+                            className="h-7 cursor-pointer border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            onClick={() => setReactivatingAnalyst(item)}
+                          >
+                            <RotateCcw className="mr-1 size-3" />
+                            Reiniciar activación
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -592,6 +622,31 @@ export function EntitiesPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={Boolean(reactivatingAnalyst)} onOpenChange={(open) => { if (!open && busyAnalystId === null) setReactivatingAnalyst(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reiniciar activación del analista</AlertDialogTitle>
+            <AlertDialogDescription>
+              {reactivatingAnalyst ? `${reactivatingAnalyst.name} perderá el acceso actual.` : "El analista perderá el acceso actual."} Su contraseña y sesiones dejarán de funcionar, y deberás compartirle un nuevo enlace de activación. Sus datos e historial se conservarán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busyAnalystId !== null}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busyAnalystId !== null}
+              className="bg-slate-950 text-white hover:bg-slate-800"
+              onClick={(event) => {
+                event.preventDefault()
+                void handleRestartActivation()
+              }}
+            >
+              <RotateCcw className="mr-1.5 size-4" />
+              {busyAnalystId !== null ? "Reiniciando..." : "Reiniciar activación"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={Boolean(editingEntity)} onOpenChange={(open) => { if (!open) setEditingEntity(null) }}>
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">

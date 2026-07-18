@@ -288,6 +288,13 @@ export const mockService: AppService = {
     if (!current) throw new Error("Analista no encontrado.")
     return { analyst: clone(current), activationToken: "mock-regenerated-token", expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() }
   },
+  async restartAnalystActivation(id) {
+    await wait()
+    const current = analysts.find((item) => item.id === id)
+    if (!current) throw new Error("Analista no encontrado.")
+    const analyst = { ...clone(current), active: false, accessStatus: "PENDING_ACTIVATION" as const }
+    return { analyst, activationToken: "mock-reactivation-token", expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() }
+  },
   async validateAnalystInvitation() { await wait(); return { name: "Analista invitado", email: "analista@entidad.test", entity: "Entidad financiera", expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() } },
   async activateAnalyst() { await wait() },
   async updateAnalyst(id, input) { 

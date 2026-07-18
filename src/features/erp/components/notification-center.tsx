@@ -36,6 +36,7 @@ function notificationMeta(item: ErpNotification) {
     IMPORTAR: "Importación",
     ELIMINAR: "Eliminación",
     RESTABLECER_PASSWORD: "Contraseña restablecida",
+    REINICIAR_ACTIVACION: "Activación reiniciada",
   } as Record<string, string>)[item.action] ?? "Actividad"
   if (item.resource === "SOLICITUD") return { title: `${action}: solicitud`, icon: FileText }
   if (item.resource === "CARGA_EXCEL") return { title: `${action}: Excel`, icon: FileSpreadsheet }
