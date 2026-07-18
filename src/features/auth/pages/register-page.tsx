@@ -24,6 +24,7 @@ export function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
   const [documentMessage, setDocumentMessage] = useState("")
+  const [validatedDocument, setValidatedDocument] = useState<string | null>(null)
   const [validatingDocument, setValidatingDocument] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -45,6 +46,9 @@ export function RegisterPage() {
     if (!email.trim() || !email.includes("@")) return "Ingrese un correo electrónico válido."
     const documentError = validateDocumentNumber()
     if (documentError) return documentError
+    if (validatedDocument !== `${tipoDocumento}:${numeroDocumento.trim()}`) {
+      return "Valide el documento y confirme que figura en el registro de protestos."
+    }
     if (password.length < 8) return "La contraseña debe tener al menos 8 caracteres."
     if (password !== confirmPassword) return "Las contraseñas ingresadas no coinciden."
 
@@ -54,6 +58,7 @@ export function RegisterPage() {
   async function handleLookupDocument() {
     setError("")
     setDocumentMessage("")
+    setValidatedDocument(null)
     const documentError = validateDocumentNumber()
     if (documentError) {
       setError(documentError)
@@ -65,11 +70,13 @@ export function RegisterPage() {
       const result = await appService.lookupDebtor(tipoDocumento, numeroDocumento.trim())
       if (result.found && result.nombreCompleto) {
         setNombreCompleto(result.nombreCompleto)
+        setValidatedDocument(`${tipoDocumento}:${numeroDocumento.trim()}`)
         if (result.email && !email.trim()) setEmail(result.email)
         setDocumentMessage("Documento encontrado. Se completó el nombre asociado.")
         toast.success("Documento encontrado en los registros.")
       } else {
-        setDocumentMessage("No existe un deudor registrado con este documento. Puede continuar el registro manualmente.")
+        setNombreCompleto("")
+        setDocumentMessage("El documento no figura en el registro de protestos. Verifique el número ingresado o comuníquese con la Cámara.")
         toast.info("Documento no encontrado en los registros actuales.")
       }
     } catch (reason) {
@@ -157,6 +164,7 @@ export function RegisterPage() {
                     id="nombreCompleto" 
                     value={nombreCompleto} 
                     onChange={(e) => setNombreCompleto(e.target.value)} 
+                    readOnly={validatedDocument !== null}
                     placeholder="Juan Pérez o Ica Retail S.A.C." 
                     required 
                   />
@@ -183,6 +191,7 @@ export function RegisterPage() {
                         setTipoDocumento(value as "DNI" | "RUC" | "CE")
                         setNumeroDocumento("")
                         setDocumentMessage("")
+                        setValidatedDocument(null)
                       }}
                     >
                       <SelectTrigger id="tipoDocumento">
@@ -211,6 +220,7 @@ export function RegisterPage() {
                           setNumeroDocumento(val.replace(/\s/g, "").toUpperCase().slice(0, 12))
                         }
                         setDocumentMessage("")
+                        setValidatedDocument(null)
                       }} 
                       placeholder={tipoDocumento === "DNI" ? "8 dígitos" : tipoDocumento === "RUC" ? "11 dígitos" : "Entre 8 y 12 caracteres"} 
                       required 
