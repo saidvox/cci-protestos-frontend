@@ -346,6 +346,7 @@ export const analysts: Analyst[] = [
     email: "cramos@bancodemo.local",
     assigned: 15,
     active: true,
+    accessStatus: "ACTIVE",
   },
   {
     id: 2,
@@ -354,6 +355,7 @@ export const analysts: Analyst[] = [
     email: "mflores@cajademo.local",
     assigned: 8,
     active: true,
+    accessStatus: "ACTIVE",
   },
   {
     id: 3,
@@ -362,6 +364,7 @@ export const analysts: Analyst[] = [
     email: "jortiz@cajaica.pe",
     assigned: 11,
     active: true,
+    accessStatus: "ACTIVE",
   },
   {
     id: 4,
@@ -370,6 +373,7 @@ export const analysts: Analyst[] = [
     email: "pvaldez@bcp.com.pe",
     assigned: 20,
     active: true,
+    accessStatus: "ACTIVE",
   },
   {
     id: 5,
@@ -378,6 +382,7 @@ export const analysts: Analyst[] = [
     email: "rmedina@interbank.pe",
     assigned: 5,
     active: true,
+    accessStatus: "ACTIVE",
   },
   {
     id: 6,
@@ -386,6 +391,7 @@ export const analysts: Analyst[] = [
     email: "dcaceres@bbva.com",
     assigned: 9,
     active: true,
+    accessStatus: "ACTIVE",
   },
   {
     id: 7,
@@ -394,6 +400,7 @@ export const analysts: Analyst[] = [
     email: "fvarela@scotiabank.com.pe",
     assigned: 3,
     active: true,
+    accessStatus: "ACTIVE",
   },
   {
     id: 8,
@@ -402,6 +409,7 @@ export const analysts: Analyst[] = [
     email: "agomez@bn.com.pe",
     assigned: 12,
     active: true,
+    accessStatus: "ACTIVE",
   },
 ]
 

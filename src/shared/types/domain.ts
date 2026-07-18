@@ -104,6 +104,7 @@ export interface Analyst {
   code: string
   assigned: number
   active: boolean
+  accessStatus: "PENDING_ACTIVATION" | "ACTIVE" | "DISABLED"
   entityId?: number
   entityName?: string
 }
@@ -113,7 +114,19 @@ export interface CreateAnalystInput {
   email: string
   code: string
   entityId: number
-  password: string
+}
+
+export interface AnalystInvitation {
+  analyst: Analyst
+  activationToken: string
+  expiresAt: string
+}
+
+export interface AnalystActivationInfo {
+  name: string
+  email: string
+  entity: string
+  expiresAt: string
 }
 
 export interface ErpNotification {

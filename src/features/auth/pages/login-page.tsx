@@ -1,6 +1,6 @@
 ﻿import { useState, type FormEvent } from "react"
-import { Landmark, LoaderCircle, LockKeyhole } from "lucide-react"
-import { Link, Navigate } from "react-router-dom"
+import { CircleCheck, Landmark, LoaderCircle, LockKeyhole } from "lucide-react"
+import { Link, Navigate, useLocation } from "react-router-dom"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert"
 import { Button } from "@/shared/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card"
@@ -16,8 +16,10 @@ import type { LoginCredentials } from "@/shared/types/domain"
 const DEMO_ENABLED = import.meta.env.VITE_ENABLE_DEMO === "true"
 
 export function LoginPage() {
+  const location = useLocation()
+  const activationState = location.state as { activationEmail?: string; activationSuccess?: boolean } | null
   const { session, isAuthenticated, authenticate, acceptSession, loading: authLoading } = useAuth()
-  const [identifier, setIdentifier] = useState(DEMO_ENABLED ? DEMO_PUBLIC_ACCOUNTS.debtor.email : "")
+  const [identifier, setIdentifier] = useState(activationState?.activationEmail ?? (DEMO_ENABLED ? DEMO_PUBLIC_ACCOUNTS.debtor.email : ""))
   const [password, setPassword] = useState(DEMO_ENABLED ? DEMO_PUBLIC_ACCOUNTS.debtor.password : "")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -94,6 +96,7 @@ export function LoginPage() {
           </CardHeader>
           <CardContent>
             <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+              {activationState?.activationSuccess ? <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900"><CircleCheck /><AlertTitle>Cuenta activada</AlertTitle><AlertDescription>Ya puedes ingresar con tu correo y la contraseña que acabas de crear.</AlertDescription></Alert> : null}
               {error ? <Alert variant="destructive"><LockKeyhole /><AlertTitle>Acceso no disponible</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
               <FieldGroup>
                 <Field>
@@ -114,6 +117,10 @@ export function LoginPage() {
                 <Link to="/register" className="font-semibold text-primary hover:underline">
                   Regístrate aquí
                 </Link>
+              </p>
+              <p className="text-center text-xs text-muted-foreground">
+                ¿Recibiste una invitación como analista?{" "}
+                <Link to="/analista/activar" className="font-semibold text-primary hover:underline">Activa tu cuenta</Link>
               </p>
 
               {DEMO_ENABLED ? <div className="flex flex-col gap-2 border-t pt-2">

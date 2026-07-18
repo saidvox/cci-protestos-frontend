@@ -279,18 +279,27 @@ export const mockService: AppService = {
   async createAnalyst(input) { 
     await wait(); 
     const ent = entities.find(e => e.id === input.entityId);
-    return { id: Date.now(), ...input, assigned: 0, active: true, entityName: ent?.name } 
+    const analyst = { id: Date.now(), ...input, assigned: 0, active: false, accessStatus: "PENDING_ACTIVATION" as const, entityName: ent?.name }
+    return { analyst, activationToken: "mock-activation-token", expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() }
   },
+  async regenerateAnalystInvitation(id) {
+    await wait()
+    const current = analysts.find((item) => item.id === id)
+    if (!current) throw new Error("Analista no encontrado.")
+    return { analyst: clone(current), activationToken: "mock-regenerated-token", expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() }
+  },
+  async validateAnalystInvitation() { await wait(); return { name: "Analista invitado", email: "analista@entidad.test", entity: "Entidad financiera", expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() } },
+  async activateAnalyst() { await wait() },
   async updateAnalyst(id, input) { 
     await wait(); 
     const ent = entities.find(e => e.id === input.entityId);
-    return { id, ...input, assigned: 0, entityName: ent?.name } 
+    return { id, ...input, assigned: 0, accessStatus: input.active ? "ACTIVE" as const : "DISABLED" as const, entityName: ent?.name }
   },
   async toggleAnalystStatus(id, active) {
     await wait()
     const current = analysts.find((item) => item.id === id)
     if (!current) throw new Error("Analista no encontrado.")
-    return { ...clone(current), active }
+    return { ...clone(current), active, accessStatus: active ? "ACTIVE" : "DISABLED" }
   },
   async resetAnalystPassword() { await wait() },
   async getNotifications(limit = 10) {

@@ -18,7 +18,7 @@ describe("API DTO adapters", () => {
     expect(adaptProtest({ id: 1, numeroDocumento: "20", nombreDeudor: "Empresa", entidadId: 3, entidad: "Banco", tipoTitulo: "Letra", monto: 25, moneda: "PEN", fechaProtesto: "2026-01-01", vigente: true })).toMatchObject({ documentNumber: "20", debtorName: "Empresa", financialEntityId: 3, status: "VIGENTE" })
     expect(adaptRequest({ id: 2, codigo: "SOL-1", solicitante: "Ana", entidad: "Banco", analista: null, estado: "REGISTRADA", tipoTramite: "REGISTRO_PROTESTO", numeroDocumentoDeudor: "201", monto: 25, moneda: "PEN", motivo: "Detalle", version: 0, observacion: null, creadoEn: "2026-01-01T00:00:00Z", actualizadoEn: "2026-01-01T00:00:00Z" })).toMatchObject({ code: "SOL-1", type: "REGISTRO_PROTESTO", documentNumber: "201", amount: 25, currency: "PEN", reason: "Detalle", version: 0 })
     expect(adaptEntity({ id: 1, ruc: "201", razonSocial: "Banco", contacto: "Persona", email: "p@demo.local", activo: true })).toMatchObject({ name: "Banco", contact: "Persona", email: "p@demo.local" })
-    expect(adaptAnalyst({ id: 1, codigo: "AN-01", nombre: "Carlos", email: "c@demo.local", disponible: true })).toMatchObject({ code: "AN-01", name: "Carlos", active: true })
+    expect(adaptAnalyst({ id: 1, codigo: "AN-01", nombre: "Carlos", email: "c@demo.local", disponible: true, accessStatus: "ACTIVE" })).toMatchObject({ code: "AN-01", name: "Carlos", active: true, accessStatus: "ACTIVE" })
   })
   it("maps reports, audits and page metadata", () => {
     expect(adaptReport({ total: 2, porEstado: { REGISTRADA: 2 } }).byStatus.REGISTRADA).toBe(2)

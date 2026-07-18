@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react"
-import { Eye, EyeOff, KeyRound } from "lucide-react"
+import { Copy, Eye, EyeOff, KeyRound, Link2 } from "lucide-react"
 import { Building2, Edit, Landmark, Plus, Power, PowerOff, Search, User, UsersRound } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/shared/components/ui/badge"
@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs"
 import { PageHeader } from "@/shared/components/shared/page-header"
 import { appService } from "@/shared/services/service-factory"
-import type { Analyst, FinancialEntity } from "@/shared/types/domain"
+import type { Analyst, AnalystInvitation, FinancialEntity } from "@/shared/types/domain"
 import { getErrorMessage } from "@/shared/lib/utils"
 import { useAuth } from "@/features/auth/auth-context"
 
@@ -37,7 +37,7 @@ export function EntitiesPage() {
   const [editAnalystActive, setEditAnalystActive] = useState("true")
   const [busyEntityId, setBusyEntityId] = useState<number | null>(null)
   const [busyAnalystId, setBusyAnalystId] = useState<number | null>(null)
-  const [showCreatePassword, setShowCreatePassword] = useState(false)
+  const [analystInvitation, setAnalystInvitation] = useState<AnalystInvitation | null>(null)
   const [resettingAnalyst, setResettingAnalyst] = useState<Analyst | null>(null)
   const [showResetPassword, setShowResetPassword] = useState(false)
   const isAdmin = session?.user.roles.includes("CCI_ADMIN") ?? false
@@ -128,34 +128,48 @@ export function EntitiesPage() {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     const entityId = Number(createAnalystEntityId)
-    const password = String(form.get("password"))
-    const confirmation = String(form.get("passwordConfirmation"))
     if (!entityId) {
       toast.error("Seleccione una entidad financiera.")
       return
     }
-    if (!STRONG_PASSWORD.test(password)) {
-      toast.error("La contraseña debe incluir mayúscula, minúscula, número y símbolo; mínimo 8 caracteres.")
-      return
-    }
-    if (password !== confirmation) {
-      toast.error("Las contraseñas no coinciden.")
-      return
-    }
     try {
-      const item = await appService.createAnalyst({
+      const invitation = await appService.createAnalyst({
         code: String(form.get("code")).trim(),
         name: String(form.get("name")).trim(),
         email: String(form.get("email")).trim(),
         entityId,
-        password,
       })
-      setAnalysts((current) => [...current, item])
+      setAnalysts((current) => [...current, invitation.analyst])
       setCreateAnalystEntityId("")
       setOpenAnalystModal(false)
-      toast.success("Analista registrado correctamente.")
+      setAnalystInvitation(invitation)
+      toast.success("Puesto de analista creado. Comparte su enlace de activación.")
     } catch (error) {
       toast.error(getErrorMessage(error, "No fue posible registrar el analista."))
+    }
+  }
+
+  async function handleRegenerateInvitation(analyst: Analyst) {
+    setBusyAnalystId(analyst.id)
+    try {
+      const invitation = await appService.regenerateAnalystInvitation(analyst.id)
+      setAnalysts((current) => current.map((item) => item.id === analyst.id ? invitation.analyst : item))
+      setAnalystInvitation(invitation)
+      toast.success("Se generó un nuevo enlace y se revocaron los anteriores.")
+    } catch (error) {
+      toast.error(getErrorMessage(error, "No fue posible generar la invitación."))
+    } finally {
+      setBusyAnalystId(null)
+    }
+  }
+
+  async function copyInvitationLink() {
+    if (!analystInvitation) return
+    try {
+      await navigator.clipboard.writeText(buildActivationUrl(analystInvitation.activationToken))
+      toast.success("Enlace de activación copiado.")
+    } catch {
+      toast.error("No fue posible copiar el enlace. Selecciónalo manualmente.")
     }
   }
 
@@ -202,7 +216,7 @@ export function EntitiesPage() {
       })
       setAnalysts((current) => current.map((item) => item.id === updated.id ? updated : item))
       setEditingAnalyst(null)
-      toast.success("Analista actualizado correctamente.")
+      toast.success(updated.accessStatus === "PENDING_ACTIVATION" ? "Datos actualizados. Genera un nuevo enlace de activación." : "Analista actualizado correctamente.")
     } catch {
       toast.error("No fue posible actualizar el analista.")
     }
@@ -312,7 +326,7 @@ export function EntitiesPage() {
                   <form onSubmit={handleCreateAnalyst}>
                     <DialogHeader>
                       <DialogTitle className="font-bold text-slate-900">Registrar analista</DialogTitle>
-                      <DialogDescription className="text-xs">Registra un perfil de analista y asócialo a una entidad financiera activa.</DialogDescription>
+                      <DialogDescription className="text-xs">Crea el puesto y genera un enlace para que el analista defina su propia contraseña.</DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                       <FieldGroup>
@@ -327,20 +341,6 @@ export function EntitiesPage() {
                         <Field>
                           <FieldLabel htmlFor="analyst-email">Correo electrónico</FieldLabel>
                           <Input id="analyst-email" name="email" type="email" placeholder="Ej. carlos@banco.com" required className="bg-white text-xs" />
-                        </Field>
-                        <Field>
-                          <FieldLabel htmlFor="analyst-password">Contraseña temporal</FieldLabel>
-                          <div className="relative">
-                            <Input id="analyst-password" name="password" type={showCreatePassword ? "text" : "password"} minLength={8} maxLength={128} autoComplete="new-password" required className="bg-white pr-10 text-xs" />
-                            <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 size-9" aria-label={showCreatePassword ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setShowCreatePassword((value) => !value)}>
-                              {showCreatePassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                            </Button>
-                          </div>
-                          <p className="text-[11px] leading-4 text-slate-500">8 caracteres como mínimo, con mayúscula, minúscula, número y símbolo.</p>
-                        </Field>
-                        <Field>
-                          <FieldLabel htmlFor="analyst-password-confirmation">Confirmar contraseña</FieldLabel>
-                          <Input id="analyst-password-confirmation" name="passwordConfirmation" type={showCreatePassword ? "text" : "password"} minLength={8} maxLength={128} autoComplete="new-password" required className="bg-white text-xs" />
                         </Field>
                         <Field>
                           <FieldLabel htmlFor="analyst-entity">Entidad financiera</FieldLabel>
@@ -361,7 +361,7 @@ export function EntitiesPage() {
                     </div>
                     <DialogFooter className="gap-2 border-t pt-3 sm:gap-0">
                       <Button type="button" variant="outline" onClick={() => setOpenAnalystModal(false)}>Cancelar</Button>
-                      <Button type="submit" className="bg-slate-950 font-semibold text-white hover:bg-slate-800">Registrar</Button>
+                      <Button type="submit" className="bg-slate-950 font-semibold text-white hover:bg-slate-800"><Link2 className="mr-1.5 size-4" />Crear invitación</Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
@@ -490,8 +490,8 @@ export function EntitiesPage() {
                           <CardDescription className="mt-0.5 truncate text-xs text-slate-500">{item.email}</CardDescription>
                         </div>
                       </div>
-                      <Badge variant="secondary" className={item.active ? "border bg-slate-100 py-0 text-[10px] text-slate-700 hover:bg-slate-100" : "border bg-slate-100 py-0 text-[10px] text-slate-500"}>
-                        {item.active ? "Disponible" : "Inactivo"}
+                      <Badge variant="secondary" className={analystStatusClass(item.accessStatus)}>
+                        {analystStatusLabel(item.accessStatus)}
                       </Badge>
                     </CardHeader>
                     <CardContent className="space-y-3 border-t border-slate-100 pt-3 text-left">
@@ -508,7 +508,19 @@ export function EntitiesPage() {
                         </span>
                       </div>
                       <div className="flex flex-wrap justify-end gap-2">
-                        {isAdmin && (
+                        {isAdmin && item.accessStatus === "PENDING_ACTIVATION" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busyAnalystId === item.id}
+                            className="h-7 cursor-pointer border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            onClick={() => void handleRegenerateInvitation(item)}
+                          >
+                            <Link2 className="mr-1 size-3" />
+                            Generar enlace
+                          </Button>
+                        ) : null}
+                        {isAdmin && item.accessStatus !== "PENDING_ACTIVATION" && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -528,16 +540,18 @@ export function EntitiesPage() {
                           <Edit className="mr-1 size-3" />
                           Editar
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={busyAnalystId === item.id}
-                          className="h-7 cursor-pointer border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                          onClick={() => void handleToggleAnalyst(item)}
-                        >
-                          {item.active ? <PowerOff className="mr-1 size-3" /> : <Power className="mr-1 size-3" />}
-                          {item.active ? "Deshabilitar" : "Habilitar"}
-                        </Button>
+                        {item.accessStatus !== "PENDING_ACTIVATION" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busyAnalystId === item.id}
+                            className="h-7 cursor-pointer border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            onClick={() => void handleToggleAnalyst(item)}
+                          >
+                            {item.active ? <PowerOff className="mr-1 size-3" /> : <Power className="mr-1 size-3" />}
+                            {item.active ? "Deshabilitar" : "Habilitar"}
+                          </Button>
+                        ) : null}
                       </div>
                     </CardContent>
                   </Card>
@@ -547,6 +561,37 @@ export function EntitiesPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={Boolean(analystInvitation)} onOpenChange={(open) => { if (!open) setAnalystInvitation(null) }}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
+          {analystInvitation ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-bold text-slate-900">Invitación de analista</DialogTitle>
+                <DialogDescription className="text-xs">Comparte este enlace con {analystInvitation.analyst.name}. Por seguridad, no volverá a mostrarse después de cerrar.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs">
+                  <span className="block text-slate-500">Entidad financiera</span>
+                  <strong className="text-slate-900">{analystInvitation.analyst.entityName}</strong>
+                </div>
+                <Field>
+                  <FieldLabel htmlFor="analyst-activation-link">Enlace de activación</FieldLabel>
+                  <div className="flex min-w-0 gap-2">
+                    <Input id="analyst-activation-link" value={buildActivationUrl(analystInvitation.activationToken)} readOnly className="min-w-0 bg-white font-mono text-[11px]" onFocus={(event) => event.currentTarget.select()} />
+                    <Button type="button" variant="outline" size="icon" className="shrink-0" aria-label="Copiar enlace de activación" onClick={() => void copyInvitationLink()}><Copy className="size-4" /></Button>
+                  </div>
+                </Field>
+                <p className="text-xs text-slate-500">Vence el {new Date(analystInvitation.expiresAt).toLocaleString("es-PE", { dateStyle: "medium", timeStyle: "short" })}. Generar otro enlace revocará este inmediatamente.</p>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setAnalystInvitation(null)}>Cerrar</Button>
+                <Button type="button" className="bg-slate-950 text-white hover:bg-slate-800" onClick={() => void copyInvitationLink()}><Copy className="mr-1.5 size-4" />Copiar enlace</Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={Boolean(editingEntity)} onOpenChange={(open) => { if (!open) setEditingEntity(null) }}>
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
@@ -636,20 +681,24 @@ export function EntitiesPage() {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field>
-                    <FieldLabel htmlFor="edit-analyst-active">Disponibilidad</FieldLabel>
-                    <Select value={editAnalystActive} onValueChange={setEditAnalystActive}>
-                      <SelectTrigger id="edit-analyst-active" className="h-9 w-full bg-white text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectItem value="true">Disponible / Recibe asignaciones</SelectItem>
-                          <SelectItem value="false">No disponible</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </Field>
+                  {editingAnalyst.accessStatus === "PENDING_ACTIVATION" ? (
+                    <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">La disponibilidad se habilitará automáticamente cuando el analista active su cuenta.</div>
+                  ) : (
+                    <Field>
+                      <FieldLabel htmlFor="edit-analyst-active">Disponibilidad</FieldLabel>
+                      <Select value={editAnalystActive} onValueChange={setEditAnalystActive}>
+                        <SelectTrigger id="edit-analyst-active" className="h-9 w-full bg-white text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="true">Disponible / Recibe asignaciones</SelectItem>
+                            <SelectItem value="false">No disponible</SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
                 </FieldGroup>
               </div>
               <DialogFooter className="gap-2 border-t pt-3 sm:gap-0">
@@ -697,4 +746,20 @@ export function EntitiesPage() {
       </Dialog>
     </>
   )
+}
+
+function buildActivationUrl(token: string) {
+  return `${window.location.origin}/analista/activar?token=${encodeURIComponent(token)}`
+}
+
+function analystStatusLabel(status: Analyst["accessStatus"]) {
+  if (status === "PENDING_ACTIVATION") return "Pendiente de activación"
+  return status === "ACTIVE" ? "Disponible" : "Inactivo"
+}
+
+function analystStatusClass(status: Analyst["accessStatus"]) {
+  if (status === "PENDING_ACTIVATION") return "border border-amber-200 bg-amber-50 py-0 text-[10px] text-amber-800 hover:bg-amber-50"
+  return status === "ACTIVE"
+    ? "border bg-slate-100 py-0 text-[10px] text-slate-700 hover:bg-slate-100"
+    : "border bg-slate-100 py-0 text-[10px] text-slate-500"
 }

@@ -1,6 +1,6 @@
 import { apiClient } from "@/shared/services/api-client"
 import type { AppService } from "@/shared/services/contracts"
-import { adaptAnalyst, adaptAudit, adaptDashboard, adaptEntity, adaptLogin, adaptNotification, adaptOfficialDocument, adaptPage, adaptProtest, adaptReport, adaptRequest, adaptRequestDocument, type AnalystDto, type AuditDto, type DashboardDto, type EntityDto, type LoginDto, type NotificationFeedDto, type OfficialDocumentDto, type PageDto, type ProtestDto, type ReportDto, type RequestDocumentDto, type RequestDto } from "@/shared/services/api-adapters"
+import { adaptAnalyst, adaptAudit, adaptDashboard, adaptEntity, adaptLogin, adaptNotification, adaptOfficialDocument, adaptPage, adaptProtest, adaptReport, adaptRequest, adaptRequestDocument, type AnalystActivationInfoDto, type AnalystDto, type AnalystInvitationDto, type AuditDto, type DashboardDto, type EntityDto, type LoginDto, type NotificationFeedDto, type OfficialDocumentDto, type PageDto, type ProtestDto, type ReportDto, type RequestDocumentDto, type RequestDto } from "@/shared/services/api-adapters"
 async function csrf() { await apiClient.get("/auth/csrf") }
 async function mutate<T>(operation: () => Promise<T>) { await csrf(); return operation() }
 function saveBlob(blob: Blob, filename: string) {
@@ -45,7 +45,10 @@ export const apiService: AppService = {
   async updateEntity(id, input) { return adaptEntity((await mutate(() => apiClient.put<EntityDto>(`/entidades/${id}`, { ruc: input.ruc, razonSocial: input.name, contacto: input.contact, email: input.email, activo: input.active }))).data) },
   async toggleEntityStatus(id, active) { return adaptEntity((await mutate(() => apiClient.patch<EntityDto>(`/entidades/${id}/estado`, { activo: active }))).data) },
   async getAnalysts() { return (await apiClient.get<AnalystDto[]>("/analistas")).data.map(adaptAnalyst) },
-  async createAnalyst(input) { return adaptAnalyst((await mutate(() => apiClient.post<AnalystDto>("/analistas", { nombre: input.name, email: input.email, codigo: input.code, entidadId: input.entityId, password: input.password }))).data) },
+  async createAnalyst(input) { const dto = (await mutate(() => apiClient.post<AnalystInvitationDto>("/analistas", { nombre: input.name, email: input.email, codigo: input.code, entidadId: input.entityId }))).data; return { analyst: adaptAnalyst(dto.analista), activationToken: dto.activationToken, expiresAt: dto.expiresAt } },
+  async regenerateAnalystInvitation(id) { const dto = (await mutate(() => apiClient.post<AnalystInvitationDto>(`/analistas/${id}/invitacion`))).data; return { analyst: adaptAnalyst(dto.analista), activationToken: dto.activationToken, expiresAt: dto.expiresAt } },
+  async validateAnalystInvitation(token) { const dto = (await apiClient.get<AnalystActivationInfoDto>("/v1/auth/analyst-activation", { params: { token } })).data; return { name: dto.nombre, email: dto.email, entity: dto.entidad, expiresAt: dto.expiresAt } },
+  async activateAnalyst(token, password) { await apiClient.post("/v1/auth/analyst-activation", { token, password }) },
   async updateAnalyst(id, input) { return adaptAnalyst((await mutate(() => apiClient.put<AnalystDto>(`/analistas/${id}`, { nombre: input.name, email: input.email, codigo: input.code, entidadId: input.entityId, disponible: input.active }))).data) },
   async toggleAnalystStatus(id, active) { return adaptAnalyst((await mutate(() => apiClient.patch<AnalystDto>(`/analistas/${id}/estado`, { disponible: active }))).data) },
   async resetAnalystPassword(id, password) { await mutate(() => apiClient.patch(`/analistas/${id}/password`, { password })) },

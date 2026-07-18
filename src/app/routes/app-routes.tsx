@@ -16,6 +16,7 @@ const PlaceholderPage = lazy(() => import("@/features/public/pages/placeholder-p
 const LoginPage = lazy(() => import("@/features/auth/pages/login-page").then((m) => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() => import("@/features/auth/pages/register-page").then((m) => ({ default: m.RegisterPage })))
 const ErpLoginPage = lazy(() => import("@/features/auth/pages/erp-login-page").then((m) => ({ default: m.ErpLoginPage })))
+const AnalystActivationPage = lazy(() => import("@/features/auth/pages/analyst-activation-page").then((m) => ({ default: m.AnalystActivationPage })))
 
 const DebtorDashboard = lazy(() => import("@/features/debtor/pages/debtor-dashboard").then((m) => ({ default: m.DebtorDashboard })))
 
@@ -42,6 +43,7 @@ export function AppRoutes() {
 
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
+        <Route path="analista/activar" element={<AnalystActivationPage />} />
         <Route path="erp/login" element={<ErpLoginPage />} />
 
         <Route element={<ProtectedRoute roles={["USER_DEBTOR"]} />}>
