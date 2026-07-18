@@ -6,6 +6,7 @@ import type {
   DashboardSummary,
   FinancialEntity,
   OfficialDocument,
+  ErpNotification,
   RequestDocument,
   Page,
   Protest,
@@ -29,6 +30,8 @@ export interface DashboardDto { total: number; pendientes: number; aprobadas: nu
 export interface AuditDto { id: number; actor: string; accion: string; recurso: string; recursoId: string | null; detalle: string; fecha: string }
 export interface OfficialDocumentDto { id: number; titulo: string; descripcion: string | null; filename: string; downloadUrl: string; sizeBytes: number; tipo?: OfficialDocument["type"]; activo: boolean; orden: number; creadoEn: string }
 export interface RequestDocumentDto { id: number; solicitudId: number; filename: string; mimeType: string; sizeBytes: number; downloadUrl: string; creadoEn: string }
+export interface NotificationItemDto { id: number; action: string; resource: string; resourceId: string | null; actor: string; detail: string; occurredAt: string; read: boolean }
+export interface NotificationFeedDto { items: NotificationItemDto[]; unreadCount: number }
 export interface PageDto<T> { content: T[]; page: number; size: number; totalElements: number; totalPages: number }
 
 function mapRole(name: string): Role {
@@ -57,4 +60,5 @@ export const adaptDashboard = (dto: DashboardDto): DashboardSummary => ({ total:
 export const adaptAudit = (dto: AuditDto): AuditEntry => ({ id: dto.id, actor: dto.actor, action: dto.accion, resource: dto.recurso, date: dto.fecha, detail: dto.detalle })
 export const adaptOfficialDocument = (dto: OfficialDocumentDto): OfficialDocument => ({ id: dto.id, title: dto.titulo, description: dto.descripcion ?? undefined, filename: dto.filename, downloadUrl: dto.downloadUrl, sizeBytes: dto.sizeBytes, type: dto.tipo ?? "FORMATO_REQUERIDO", active: dto.activo, order: dto.orden, createdAt: dto.creadoEn })
 export const adaptRequestDocument = (dto: RequestDocumentDto): RequestDocument => ({ id: dto.id, requestId: dto.solicitudId, filename: dto.filename, mimeType: dto.mimeType, sizeBytes: dto.sizeBytes, downloadUrl: dto.downloadUrl, createdAt: dto.creadoEn })
+export const adaptNotification = (dto: NotificationItemDto): ErpNotification => ({ id: dto.id, action: dto.action, resource: dto.resource, resourceId: dto.resourceId ?? undefined, actor: dto.actor, detail: dto.detail, occurredAt: dto.occurredAt, read: dto.read })
 export const adaptPage = <TDto, T>(dto: PageDto<TDto>, adapter: (item: TDto) => T): Page<T> => ({ ...dto, content: dto.content.map(adapter) })

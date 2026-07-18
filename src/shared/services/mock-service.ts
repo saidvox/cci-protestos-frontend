@@ -1,6 +1,6 @@
 import { analysts, auditEntries, entities, protests, requests } from "@/shared/mocks/data"
 import type { AppService } from "@/shared/services/contracts"
-import type { AuthSession, OfficialDocument, RegisterInput, RequestRecord, RequestStatus, Role } from "@/shared/types/domain"
+import type { AuthSession, ErpNotification, OfficialDocument, RegisterInput, RequestRecord, RequestStatus, Role } from "@/shared/types/domain"
 
 const wait = (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms))
 const clone = <T>(value: T): T => structuredClone(value)
@@ -58,6 +58,11 @@ const defaultOfficialDocuments: OfficialDocument[] = [
     order: 2,
     createdAt: "2026-06-01T00:00:00Z",
   },
+]
+
+const mockNotifications: ErpNotification[] = [
+  { id: 2, action: "CREAR", resource: "SOLICITUD", resourceId: "2", actor: "deudor@demo.local", detail: "Nueva solicitud registrada", occurredAt: new Date().toISOString(), read: false },
+  { id: 1, action: "IMPORTAR", resource: "CARGA_EXCEL", resourceId: "1", actor: "admin@demo.local", detail: "Importacion de protestos completada", occurredAt: new Date(Date.now() - 3_600_000).toISOString(), read: false },
 ]
 
 function getMockOfficialDocuments() {
@@ -286,6 +291,17 @@ export const mockService: AppService = {
     const current = analysts.find((item) => item.id === id)
     if (!current) throw new Error("Analista no encontrado.")
     return { ...clone(current), active }
+  },
+  async resetAnalystPassword() { await wait() },
+  async getNotifications(limit = 10) {
+    await wait()
+    const throughId = Number(localStorage.getItem("mock_notifications_read") ?? 0)
+    const items = mockNotifications.slice(0, limit).map((item) => ({ ...item, read: item.id <= throughId }))
+    return { items, unreadCount: mockNotifications.filter((item) => item.id > throughId).length }
+  },
+  async markNotificationsRead(throughId) {
+    await wait()
+    localStorage.setItem("mock_notifications_read", String(throughId))
   },
   async getDebtorRequestsHistory(documentNumber) {
     await wait()

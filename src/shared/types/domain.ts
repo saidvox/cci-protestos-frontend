@@ -108,6 +108,30 @@ export interface Analyst {
   entityName?: string
 }
 
+export interface CreateAnalystInput {
+  name: string
+  email: string
+  code: string
+  entityId: number
+  password: string
+}
+
+export interface ErpNotification {
+  id: number
+  action: string
+  resource: string
+  resourceId?: string
+  actor: string
+  detail: string
+  occurredAt: string
+  read: boolean
+}
+
+export interface NotificationFeed {
+  items: ErpNotification[]
+  unreadCount: number
+}
+
 export interface AuditEntry {
   id: number
   actor: string

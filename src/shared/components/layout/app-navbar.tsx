@@ -1,7 +1,10 @@
-﻿import { Bell, ChevronsUpDown, LogOut, UserRound } from "lucide-react"
+import { ChevronsUpDown, LogOut, UserRound } from "lucide-react"
 import { useLocation } from "react-router-dom"
+import { useAuth } from "@/features/auth/auth-context"
+import { NotificationCenter } from "@/features/erp/components/notification-center"
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/shared/components/ui/breadcrumb"
+import { Button } from "@/shared/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,10 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu"
-import { SidebarTrigger } from "@/shared/components/ui/sidebar"
 import { Separator } from "@/shared/components/ui/separator"
-import { Button } from "@/shared/components/ui/button"
-import { useAuth } from "@/features/auth/auth-context"
+import { SidebarTrigger } from "@/shared/components/ui/sidebar"
 import { titleByPath } from "@/shared/config/navigation"
 
 export function AppNavbar() {
@@ -24,18 +25,16 @@ export function AppNavbar() {
   const initials = session?.user.name.split(" ").map((part) => part[0]).slice(0, 2).join("") ?? "US"
 
   return (
-    <header className="sticky top-0 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background/95 px-4 backdrop-blur md:px-6">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background/95 px-4 backdrop-blur md:px-6">
+      <div className="flex min-w-0 items-center gap-3">
         <SidebarTrigger />
         <Separator orientation="vertical" className="h-4" />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem><BreadcrumbPage>{title}</BreadcrumbPage></BreadcrumbItem>
-          </BreadcrumbList>
+        <Breadcrumb className="min-w-0">
+          <BreadcrumbList><BreadcrumbItem><BreadcrumbPage className="truncate">{title}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList>
         </Breadcrumb>
       </div>
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" aria-label="Notificaciones"><Bell /></Button>
+      <div className="flex shrink-0 items-center gap-2">
+        <NotificationCenter />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-auto gap-2 px-2">
@@ -46,12 +45,7 @@ export function AppNavbar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             <DropdownMenuGroup>
-              <DropdownMenuLabel>
-                <span className="flex flex-col gap-1">
-                  <span>{session?.user.name}</span>
-                  <span className="font-normal text-muted-foreground">{session?.user.email}</span>
-                </span>
-              </DropdownMenuLabel>
+              <DropdownMenuLabel><span className="flex flex-col gap-1"><span>{session?.user.name}</span><span className="font-normal text-muted-foreground">{session?.user.email}</span></span></DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>

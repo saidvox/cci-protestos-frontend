@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react"
+import { Eye, EyeOff, KeyRound } from "lucide-react"
 import { Building2, Edit, Landmark, Plus, Power, PowerOff, Search, User, UsersRound } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/shared/components/ui/badge"
@@ -14,8 +15,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui
 import { PageHeader } from "@/shared/components/shared/page-header"
 import { appService } from "@/shared/services/service-factory"
 import type { Analyst, FinancialEntity } from "@/shared/types/domain"
+import { getErrorMessage } from "@/shared/lib/utils"
+import { useAuth } from "@/features/auth/auth-context"
+
+const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}$/
 
 export function EntitiesPage() {
+  const { session } = useAuth()
   const [entities, setEntities] = useState<FinancialEntity[]>([])
   const [analysts, setAnalysts] = useState<Analyst[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,6 +37,10 @@ export function EntitiesPage() {
   const [editAnalystActive, setEditAnalystActive] = useState("true")
   const [busyEntityId, setBusyEntityId] = useState<number | null>(null)
   const [busyAnalystId, setBusyAnalystId] = useState<number | null>(null)
+  const [showCreatePassword, setShowCreatePassword] = useState(false)
+  const [resettingAnalyst, setResettingAnalyst] = useState<Analyst | null>(null)
+  const [showResetPassword, setShowResetPassword] = useState(false)
+  const isAdmin = session?.user.roles.includes("CCI_ADMIN") ?? false
 
   const loadData = async () => {
     setLoading(true)
@@ -118,8 +128,18 @@ export function EntitiesPage() {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     const entityId = Number(createAnalystEntityId)
+    const password = String(form.get("password"))
+    const confirmation = String(form.get("passwordConfirmation"))
     if (!entityId) {
       toast.error("Seleccione una entidad financiera.")
+      return
+    }
+    if (!STRONG_PASSWORD.test(password)) {
+      toast.error("La contraseña debe incluir mayúscula, minúscula, número y símbolo; mínimo 8 caracteres.")
+      return
+    }
+    if (password !== confirmation) {
+      toast.error("Las contraseñas no coinciden.")
       return
     }
     try {
@@ -128,13 +148,38 @@ export function EntitiesPage() {
         name: String(form.get("name")).trim(),
         email: String(form.get("email")).trim(),
         entityId,
+        password,
       })
       setAnalysts((current) => [...current, item])
       setCreateAnalystEntityId("")
       setOpenAnalystModal(false)
       toast.success("Analista registrado correctamente.")
-    } catch {
-      toast.error("No fue posible registrar el analista.")
+    } catch (error) {
+      toast.error(getErrorMessage(error, "No fue posible registrar el analista."))
+    }
+  }
+
+  async function handleResetAnalystPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!resettingAnalyst) return
+    const form = new FormData(event.currentTarget)
+    const password = String(form.get("password"))
+    const confirmation = String(form.get("passwordConfirmation"))
+    if (!STRONG_PASSWORD.test(password)) {
+      toast.error("La contraseña debe incluir mayúscula, minúscula, número y símbolo; mínimo 8 caracteres.")
+      return
+    }
+    if (password !== confirmation) {
+      toast.error("Las contraseñas no coinciden.")
+      return
+    }
+    try {
+      await appService.resetAnalystPassword(resettingAnalyst.id, password)
+      setResettingAnalyst(null)
+      setShowResetPassword(false)
+      toast.success("Contraseña restablecida. Las sesiones anteriores fueron cerradas.")
+    } catch (error) {
+      toast.error(getErrorMessage(error, "No fue posible restablecer la contraseña."))
     }
   }
 
@@ -282,6 +327,20 @@ export function EntitiesPage() {
                         <Field>
                           <FieldLabel htmlFor="analyst-email">Correo electrónico</FieldLabel>
                           <Input id="analyst-email" name="email" type="email" placeholder="Ej. carlos@banco.com" required className="bg-white text-xs" />
+                        </Field>
+                        <Field>
+                          <FieldLabel htmlFor="analyst-password">Contraseña temporal</FieldLabel>
+                          <div className="relative">
+                            <Input id="analyst-password" name="password" type={showCreatePassword ? "text" : "password"} minLength={8} maxLength={128} autoComplete="new-password" required className="bg-white pr-10 text-xs" />
+                            <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 size-9" aria-label={showCreatePassword ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setShowCreatePassword((value) => !value)}>
+                              {showCreatePassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                            </Button>
+                          </div>
+                          <p className="text-[11px] leading-4 text-slate-500">8 caracteres como mínimo, con mayúscula, minúscula, número y símbolo.</p>
+                        </Field>
+                        <Field>
+                          <FieldLabel htmlFor="analyst-password-confirmation">Confirmar contraseña</FieldLabel>
+                          <Input id="analyst-password-confirmation" name="passwordConfirmation" type={showCreatePassword ? "text" : "password"} minLength={8} maxLength={128} autoComplete="new-password" required className="bg-white text-xs" />
                         </Field>
                         <Field>
                           <FieldLabel htmlFor="analyst-entity">Entidad financiera</FieldLabel>
@@ -449,6 +508,17 @@ export function EntitiesPage() {
                         </span>
                       </div>
                       <div className="flex flex-wrap justify-end gap-2">
+                        {isAdmin && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 cursor-pointer border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            onClick={() => setResettingAnalyst(item)}
+                          >
+                            <KeyRound className="mr-1 size-3" />
+                            Contraseña
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -585,6 +655,41 @@ export function EntitiesPage() {
               <DialogFooter className="gap-2 border-t pt-3 sm:gap-0">
                 <Button type="button" variant="outline" onClick={() => setEditingAnalyst(null)}>Cancelar</Button>
                 <Button type="submit" className="bg-slate-950 font-semibold text-white hover:bg-slate-800">Guardar cambios</Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(resettingAnalyst)} onOpenChange={(open) => { if (!open) { setResettingAnalyst(null); setShowResetPassword(false) } }}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md">
+          {resettingAnalyst && (
+            <form onSubmit={handleResetAnalystPassword}>
+              <DialogHeader>
+                <DialogTitle className="font-bold text-slate-900">Restablecer contraseña</DialogTitle>
+                <DialogDescription className="text-xs">Define una nueva contraseña para {resettingAnalyst.name}. Sus sesiones abiertas se cerrarán.</DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="reset-analyst-password">Nueva contraseña</FieldLabel>
+                    <div className="relative">
+                      <Input id="reset-analyst-password" name="password" type={showResetPassword ? "text" : "password"} minLength={8} maxLength={128} autoComplete="new-password" required className="bg-white pr-10 text-xs" />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 size-9" aria-label={showResetPassword ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setShowResetPassword((value) => !value)}>
+                        {showResetPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] leading-4 text-slate-500">8 caracteres como mínimo, con mayúscula, minúscula, número y símbolo.</p>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="reset-analyst-password-confirmation">Confirmar contraseña</FieldLabel>
+                    <Input id="reset-analyst-password-confirmation" name="passwordConfirmation" type={showResetPassword ? "text" : "password"} minLength={8} maxLength={128} autoComplete="new-password" required className="bg-white text-xs" />
+                  </Field>
+                </FieldGroup>
+              </div>
+              <DialogFooter className="gap-2 border-t pt-3 sm:gap-0">
+                <Button type="button" variant="outline" onClick={() => setResettingAnalyst(null)}>Cancelar</Button>
+                <Button type="submit" className="bg-slate-950 font-semibold text-white hover:bg-slate-800">Restablecer</Button>
               </DialogFooter>
             </form>
           )}
