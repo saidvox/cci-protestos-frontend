@@ -11,6 +11,7 @@ import { Textarea } from "@/shared/components/ui/textarea"
 import { OfficialDocumentPreviewDialog } from "@/shared/components/shared/official-document-preview-dialog"
 import { StatusBadge } from "@/shared/components/shared/status-badge"
 import { useAuth } from "@/features/auth/auth-context"
+import { getErrorMessage } from "@/shared/lib/utils"
 import { appService } from "@/shared/services/service-factory"
 import type { OfficialDocument, Protest, RequestRecord, RequestStatus } from "@/shared/types/domain"
 
@@ -67,6 +68,7 @@ export function DebtorDashboard() {
   const [loadingRequests, setLoadingRequests] = useState(true)
   const [loadingOfficialDocuments, setLoadingOfficialDocuments] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [blockingRequestDocumentCount, setBlockingRequestDocumentCount] = useState<number | null>(null)
 
   const [selectedProtestId, setSelectedProtestId] = useState("")
   const [amount, setAmount] = useState("")
@@ -106,6 +108,20 @@ export function DebtorDashboard() {
   const visibleProcessRequest = blockingRequest ?? editableRequest ?? relatedRequests[0]
   const requiredOfficialDocuments = officialDocuments.filter((document) => document.type === "FORMATO_REQUERIDO")
   const guideDocuments = officialDocuments.filter((document) => document.type === "GUIA")
+  const recoverableRequest = blockingRequest?.status === "REGISTRADA" && blockingRequestDocumentCount === 0
+
+  useEffect(() => {
+    if (!blockingRequest) {
+      setBlockingRequestDocumentCount(null)
+      return
+    }
+    let active = true
+    setBlockingRequestDocumentCount(null)
+    appService.getRequestDocuments(blockingRequest.id)
+      .then((documents) => { if (active) setBlockingRequestDocumentCount(documents.length) })
+      .catch(() => { if (active) toast.error("No se pudieron verificar los documentos de la solicitud.") })
+    return () => { active = false }
+  }, [blockingRequest])
 
   useEffect(() => {
     if (!selectedProtestId && activeProtests.length > 0) {
@@ -119,6 +135,12 @@ export function DebtorDashboard() {
     if (!reason) setReason(editableRequest.reason)
   }, [editableRequest, amount, reason])
 
+  useEffect(() => {
+    if (!recoverableRequest || !blockingRequest) return
+    if (!amount) setAmount(String(blockingRequest.amount))
+    if (!reason) setReason(blockingRequest.reason)
+  }, [recoverableRequest, blockingRequest, amount, reason])
+
   async function handleCreateRequest(event: FormEvent) {
     event.preventDefault()
     if (!canRegularize) {
@@ -129,7 +151,7 @@ export function DebtorDashboard() {
       toast.error("Seleccione el protesto a regularizar.")
       return
     }
-    if (blockingRequest) {
+    if (blockingRequest && !recoverableRequest) {
       toast.info(`Ya existe una solicitud en trámite: ${blockingRequest.code}.`)
       return
     }
@@ -154,15 +176,6 @@ export function DebtorDashboard() {
 
     setSubmitting(true)
     try {
-      const newRequest = await appService.createRequest({
-        type: "REGULARIZACION",
-        entityId: selectedProtest.financialEntityId,
-        documentNumber: user?.numeroDocumento ?? "",
-        amount: Number(amount),
-        currency: selectedProtest.currency,
-        reason: reason.trim(),
-      })
-
       const filesToUpload = [
         voucherFile,
         ...requiredOfficialDocuments
@@ -170,12 +183,22 @@ export function DebtorDashboard() {
           .filter((file): file is File => Boolean(file)),
       ]
 
-      for (const file of filesToUpload) {
-        await appService.uploadDocument(newRequest.id, file)
+      if (recoverableRequest && blockingRequest) {
+        await appService.uploadDocuments(blockingRequest.id, filesToUpload)
+        setBlockingRequestDocumentCount(filesToUpload.length)
+        toast.success("Documentos adjuntados correctamente a la solicitud existente.")
+      } else {
+        const newRequest = await appService.createRequest({
+          type: "REGULARIZACION",
+          entityId: selectedProtest.financialEntityId,
+          documentNumber: user?.numeroDocumento ?? "",
+          amount: Number(amount),
+          currency: selectedProtest.currency,
+          reason: reason.trim(),
+        }, filesToUpload)
+        toast.success("Solicitud de levantamiento enviada con éxito.")
+        setRequests((current) => [newRequest, ...current])
       }
-
-      toast.success("Solicitud de levantamiento enviada con éxito.")
-      setRequests((current) => [newRequest, ...current])
       setSelectedProtestId("")
       setAmount("")
       setReason("")
@@ -183,7 +206,7 @@ export function DebtorDashboard() {
       setOfficialDocumentFiles({})
       setAttachmentResetKey((current) => current + 1)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al enviar la solicitud.")
+      toast.error(getErrorMessage(error, "Error al enviar la solicitud."))
     } finally {
       setSubmitting(false)
     }
@@ -229,6 +252,7 @@ export function DebtorDashboard() {
               guideDocuments={guideDocuments}
               onPreviewDocument={setPreviewDocument}
               blockingRequest={blockingRequest}
+              recoveringDocuments={recoverableRequest}
               editableRequest={editableRequest}
               submitting={submitting}
               onSubmit={handleCreateRequest}
@@ -414,6 +438,7 @@ function RegularizationCard({
   guideDocuments,
   onPreviewDocument,
   blockingRequest,
+  recoveringDocuments,
   editableRequest,
   submitting,
   onSubmit,
@@ -438,11 +463,12 @@ function RegularizationCard({
   guideDocuments: OfficialDocument[]
   onPreviewDocument: (document: OfficialDocument) => void
   blockingRequest?: RequestRecord
+  recoveringDocuments: boolean
   editableRequest?: RequestRecord
   submitting: boolean
   onSubmit: (event: FormEvent) => void
 }) {
-  const disabled = !canRegularize || submitting || Boolean(blockingRequest)
+  const disabled = !canRegularize || submitting || Boolean(blockingRequest && !recoveringDocuments)
   const requiredAttachments = 1 + officialDocuments.length
   const uploadedAttachments = (voucherFile ? 1 : 0) + officialDocuments.filter((document) => officialDocumentFiles[document.id]).length
 
@@ -470,13 +496,15 @@ function RegularizationCard({
         ) : null}
 
         {blockingRequest ? (
-          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <div className={`mb-4 rounded-lg border p-4 text-sm ${recoveringDocuments ? "border-amber-200 bg-amber-50 text-amber-950" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}>
             <div className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+              {recoveringDocuments ? <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-600" /> : <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />}
               <div>
-                <p className="font-semibold">Solicitud enviada</p>
-                <p className="mt-1 text-xs text-emerald-800">
-                  La solicitud {blockingRequest.code} ya está en trámite. No puedes enviar otra para el mismo protesto hasta que sea observada, rechazada o finalizada.
+                <p className="font-semibold">{recoveringDocuments ? "Documentos pendientes" : "Solicitud enviada"}</p>
+                <p className={`mt-1 text-xs ${recoveringDocuments ? "text-amber-800" : "text-emerald-800"}`}>
+                  {recoveringDocuments
+                    ? `La solicitud ${blockingRequest.code} fue registrada sin adjuntos. Vuelve a seleccionar el voucher y los formatos para completar el envío.`
+                    : `La solicitud ${blockingRequest.code} ya está en trámite. No puedes enviar otra para el mismo protesto hasta que sea observada, rechazada o finalizada.`}
                 </p>
               </div>
             </div>
@@ -553,7 +581,7 @@ function RegularizationCard({
 
           <Button type="submit" disabled={disabled} className="mt-1 h-11 w-full bg-indigo-600 text-white shadow-sm hover:bg-indigo-700">
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send data-icon="inline-start" />}
-            {blockingRequest ? "Solicitud en trámite" : submitting ? "Enviando..." : editableRequest ? "Enviar corrección" : "Enviar solicitud"}
+            {submitting ? "Enviando..." : recoveringDocuments ? "Completar documentos" : blockingRequest ? "Solicitud en trámite" : editableRequest ? "Enviar corrección" : "Enviar solicitud"}
           </Button>
         </form>
       </CardContent>

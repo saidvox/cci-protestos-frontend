@@ -26,4 +26,24 @@ describe("API service contracts", () => {
     expect(get).toHaveBeenCalledWith("/solicitudes/mis-solicitudes", { params: { page: 2, size: 10 } })
     expect(result.page).toBe(2)
   })
+
+  it("creates a request and its documents in one multipart operation", async () => {
+    vi.spyOn(apiClient, "get").mockResolvedValue({ data: {} })
+    const post = vi.spyOn(apiClient, "post").mockResolvedValue({ data: {
+      id: 7, codigo: "SOL-ATOMIC", solicitante: "Deudor", entidad: "Banco",
+      tipoTramite: "REGULARIZACION", estado: "REGISTRADA", creadoEn: "2026-07-18T00:00:00Z",
+      numeroDocumentoDeudor: "12345678", monto: 100, moneda: "PEN", motivo: "Pago", version: 0,
+    } })
+    const voucher = new File(["%PDF-1.4"], "voucher.pdf", { type: "application/pdf" })
+
+    const result = await apiService.createRequest({
+      type: "REGULARIZACION", entityId: 2, documentNumber: "12345678", amount: 100, currency: "PEN", reason: "Pago",
+    }, [voucher])
+
+    const multipartCall = post.mock.calls.find(([url]) => url === "/solicitudes/con-documentos")
+    expect(multipartCall).toBeDefined()
+    expect(multipartCall?.[1]).toBeInstanceOf(FormData)
+    expect((multipartCall?.[1] as FormData).getAll("files")).toHaveLength(1)
+    expect(result.code).toBe("SOL-ATOMIC")
+  })
 })

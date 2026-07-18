@@ -23,11 +23,19 @@ export const apiService: AppService = {
   async getDashboard() { return adaptDashboard((await apiClient.get<DashboardDto>("/dashboard/resumen")).data) },
   async getProtests(filters = {}) { return adaptPage((await apiClient.get<PageDto<ProtestDto>>("/protestos/consulta", { params: filters })).data, adaptProtest) },
   async getRequests({ mine = false, page = 0, size = 10, status, search } = {}) { return adaptPage((await apiClient.get<PageDto<RequestDto>>(mine ? "/solicitudes/mis-solicitudes" : "/solicitudes", { params: { page, size, ...(status ? { estado: status } : {}), ...(search ? { busqueda: search } : {}) } })).data, adaptRequest) },
-  async createRequest(input) { return adaptRequest((await mutate(() => apiClient.post<RequestDto>("/solicitudes", { entidadId: input.entityId, tipoTramite: input.type, numeroDocumentoDeudor: input.documentNumber, monto: input.amount, moneda: input.currency, motivo: input.reason }))).data) },
+  async createRequest(input, files) {
+    const payload = { entidadId: input.entityId, tipoTramite: input.type, numeroDocumentoDeudor: input.documentNumber, monto: input.amount, moneda: input.currency, motivo: input.reason }
+    if (!files?.length) return adaptRequest((await mutate(() => apiClient.post<RequestDto>("/solicitudes", payload))).data)
+    const form = new FormData()
+    form.append("solicitud", new Blob([JSON.stringify(payload)], { type: "application/json" }))
+    files.forEach((file) => form.append("files", file))
+    return adaptRequest((await mutate(() => apiClient.post<RequestDto>("/solicitudes/con-documentos", form, { timeout: 120_000 }))).data)
+  },
   async updateRequest(id, input) { return adaptRequest((await mutate(() => apiClient.put<RequestDto>(`/solicitudes/${id}`, { entidadId: input.entityId, tipoTramite: input.type, numeroDocumentoDeudor: input.documentNumber, monto: input.amount, moneda: input.currency, motivo: input.reason }))).data) },
   async updateRequestStatus(id, status, observation, analystId, version) { return adaptRequest((await mutate(() => apiClient.put<RequestDto>(`/solicitudes/${id}/estado`, { estado: status, observacion: observation, analistaId: analystId, version }))).data) },
   async getDebtorRequestsHistory(documentNumber) { return (await apiClient.get<RequestDto[]>(`/solicitudes/deudor/${documentNumber}`)).data.map(adaptRequest) },
   async uploadDocument(requestId, file) { const form = new FormData(); form.append("solicitudId", String(requestId)); form.append("file", file); await mutate(() => apiClient.post("/documentos/upload", form)) },
+  async uploadDocuments(requestId, files) { const form = new FormData(); files.forEach((file) => form.append("files", file)); await mutate(() => apiClient.post(`/documentos/solicitud/${requestId}/upload-batch`, form, { timeout: 120_000 })) },
   async getRequestDocuments(requestId) { return (await apiClient.get<RequestDocumentDto[]>(`/documentos/solicitud/${requestId}`)).data.map(adaptRequestDocument) },
   async previewRequestDocument(document) { return (await apiClient.get(document.downloadUrl.replace(/^\/api/, ""), { params: { disposition: "inline" }, responseType: "blob" })).data },
   async downloadRequestDocument(document) { const response = await apiClient.get(document.downloadUrl.replace(/^\/api/, ""), { responseType: "blob" }); saveBlob(response.data, document.filename) },

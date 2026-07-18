@@ -193,6 +193,7 @@ export const mockService: AppService = {
     return { ...clone(current), status, observation, version: current.version + 1 } satisfies RequestRecord
   },
   async uploadDocument() { await wait() },
+  async uploadDocuments() { await wait() },
   async getRequestDocuments(requestId) {
     await wait()
     return [

@@ -30,11 +30,11 @@ import type {
 export interface AppService {
   getCsrf(): Promise<void>; login(credentials: LoginCredentials): Promise<AuthSession>; logout(): Promise<void>; getDashboard(): Promise<DashboardSummary>
   getSession(): Promise<AuthSession>; register(input: RegisterInput): Promise<void>; lookupDebtor(tipoDocumento: string, numeroDocumento: string): Promise<DebtorLookup>
-  getProtests(filters?: ProtestFilters): Promise<Page<Protest>>; getRequests(query?: RequestQuery): Promise<Page<RequestRecord>>; createRequest(input: CreateRequestInput): Promise<RequestRecord>
+  getProtests(filters?: ProtestFilters): Promise<Page<Protest>>; getRequests(query?: RequestQuery): Promise<Page<RequestRecord>>; createRequest(input: CreateRequestInput, files?: File[]): Promise<RequestRecord>
   updateRequest(id: number, input: CreateRequestInput): Promise<RequestRecord>
   getDebtorRequestsHistory(documentNumber: string): Promise<RequestRecord[]>
   updateRequestStatus(id: number, status: RequestStatus, observation?: string, analystId?: number, version?: number): Promise<RequestRecord>
-  uploadDocument(requestId: number, file: File): Promise<void>; uploadExcel(file: File): Promise<void>; getExcelUploads(): Promise<ExcelUploadRecord[]>
+  uploadDocument(requestId: number, file: File): Promise<void>; uploadDocuments(requestId: number, files: File[]): Promise<void>; uploadExcel(file: File): Promise<void>; getExcelUploads(): Promise<ExcelUploadRecord[]>
   getRequestDocuments(requestId: number): Promise<RequestDocument[]>; previewRequestDocument(document: RequestDocument): Promise<Blob>; downloadRequestDocument(document: RequestDocument): Promise<void>
   validateExcel(file: File): Promise<ExcelValidationResult>; importExcel(file: File): Promise<ExcelImportResult>
   getOfficialDocuments(includeInactive?: boolean): Promise<OfficialDocument[]>; uploadOfficialDocument(input: { title: string; description?: string; order?: number; type?: OfficialDocument["type"]; file: File }): Promise<OfficialDocument>
