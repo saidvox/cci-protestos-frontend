@@ -5,10 +5,6 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://api-protestos.saidvox.dev/api/:path*"
-    },
-    {
       "source": "/:path*",
       "destination": "/index.html"
     }

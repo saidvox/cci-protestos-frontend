@@ -4,6 +4,24 @@ import type { AuthSession, ErpNotification, OfficialDocument, RegisterInput, Req
 
 const wait = (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms))
 const clone = <T>(value: T): T => structuredClone(value)
+const DEMO_PREFIX = "cci-protestos-demo/"
+
+function getDemoData<T>(name: string, seed: T): T {
+  const saved = localStorage.getItem(`${DEMO_PREFIX}${name}`)
+  if (!saved) return clone(seed)
+  try { return JSON.parse(saved) as T } catch { return clone(seed) }
+}
+
+function setDemoData<T>(name: string, value: T) {
+  localStorage.setItem(`${DEMO_PREFIX}${name}`, JSON.stringify(value))
+}
+
+const getRequestsStore = () => getDemoData("requests", requests)
+const setRequestsStore = (value: typeof requests) => setDemoData("requests", value)
+const getEntitiesStore = () => getDemoData("entities", entities)
+const setEntitiesStore = (value: typeof entities) => setDemoData("entities", value)
+const getAnalystsStore = () => getDemoData("analysts", analysts)
+const setAnalystsStore = (value: typeof analysts) => setDemoData("analysts", value)
 
 function page<T>(items: T[], index = 0, size = 10) {
   const start = index * size
@@ -19,7 +37,7 @@ function roleFor(email: string): Role {
 
 function report() {
   const byStatus: Partial<Record<RequestStatus, number>> = {}
-  requests.forEach((item) => {
+  getRequestsStore().forEach((item) => {
     byStatus[item.status] = (byStatus[item.status] ?? 0) + 1
   })
   return { total: requests.length, byStatus }
@@ -66,12 +84,12 @@ const mockNotifications: ErpNotification[] = [
 ]
 
 function getMockOfficialDocuments() {
-  const saved = localStorage.getItem("mock_official_documents")
+  const saved = localStorage.getItem(`${DEMO_PREFIX}official-documents`)
   return saved ? JSON.parse(saved) as OfficialDocument[] : clone(defaultOfficialDocuments)
 }
 
 function setMockOfficialDocuments(items: OfficialDocument[]) {
-  localStorage.setItem("mock_official_documents", JSON.stringify(items))
+  localStorage.setItem(`${DEMO_PREFIX}official-documents`, JSON.stringify(items))
 }
 
 export const mockService: AppService = {
@@ -80,7 +98,7 @@ export const mockService: AppService = {
     await wait()
     if (!credentials.email || !credentials.password) throw new Error("Ingresa correo y contraseña.")
     
-    const registeredUsersStr = localStorage.getItem("mock_users")
+    const registeredUsersStr = localStorage.getItem(`${DEMO_PREFIX}users`)
     const registeredUsers: MockUser[] = registeredUsersStr ? JSON.parse(registeredUsersStr) : []
     const foundUser = registeredUsers.find((u) => u.email.toLowerCase() === credentials.email.toLowerCase())
     
@@ -105,22 +123,22 @@ export const mockService: AppService = {
         numeroDocumento: foundUser ? foundUser.numeroDocumento : (role === "USER_DEBTOR" ? "20123456789" : undefined),
       },
     }
-    localStorage.setItem("mock_session", JSON.stringify(session))
+    localStorage.setItem(`${DEMO_PREFIX}session`, JSON.stringify(session))
     return session
   },
   async logout() {
     await wait()
-    localStorage.removeItem("mock_session")
+    localStorage.removeItem(`${DEMO_PREFIX}session`)
   },
   async getSession() {
     await wait()
-    const sessionStr = localStorage.getItem("mock_session")
+    const sessionStr = localStorage.getItem(`${DEMO_PREFIX}session`)
     if (!sessionStr) throw new Error("No session active")
     return JSON.parse(sessionStr) as AuthSession
   },
   async register(input: RegisterInput) {
     await wait()
-    const registeredUsersStr = localStorage.getItem("mock_users")
+    const registeredUsersStr = localStorage.getItem(`${DEMO_PREFIX}users`)
     const registeredUsers: MockUser[] = registeredUsersStr ? JSON.parse(registeredUsersStr) : []
     if (registeredUsers.some((u) => u.email.toLowerCase() === input.email.toLowerCase())) {
       throw new Error("El correo electrónico ya está registrado.")
@@ -133,7 +151,7 @@ export const mockService: AppService = {
       numeroDocumento: input.numeroDocumento,
     }
     registeredUsers.push(newUser)
-    localStorage.setItem("mock_users", JSON.stringify(registeredUsers))
+    localStorage.setItem(`${DEMO_PREFIX}users`, JSON.stringify(registeredUsers))
   },
   async lookupDebtor(_tipoDocumento: string, numeroDocumento: string) {
     await wait()
@@ -148,13 +166,15 @@ export const mockService: AppService = {
   async getDashboard() {
     await wait()
     const value = report()
+    const requestItems = getRequestsStore()
+    const entityItems = getEntitiesStore()
     return {
       total: value.total,
       pending: (value.byStatus.REGISTRADA ?? 0) + (value.byStatus.EN_REVISION_CCI ?? 0),
       approved: value.byStatus.APROBADA_ENTIDAD ?? 0,
-      activeEntities: entities.filter((item) => item.active).length,
+      activeEntities: entityItems.filter((item) => item.active).length,
       byStatus: value.byStatus,
-      recentRequests: clone(requests.slice(0, 4)),
+      recentRequests: clone(requestItems.slice(0, 4)),
     }
   },
   async getProtests(filters = {}) {
@@ -171,26 +191,31 @@ export const mockService: AppService = {
     await wait()
     const term = search?.toLowerCase() ?? ""
     return page(
-      clone(requests.filter((item) => (!mine || item.financialEntity === "Banco Demo Ica") && (!status || item.status === status) && (!term || item.code.toLowerCase().includes(term)))),
+      clone(getRequestsStore().filter((item) => (!mine || item.financialEntity === "Banco Demo Ica") && (!status || item.status === status) && (!term || item.code.toLowerCase().includes(term)))),
       index,
       size,
     )
   },
   async createRequest(input) {
     await wait()
-    const entity = entities.find((item) => item.id === input.entityId)
-    return {
+    const entity = getEntitiesStore().find((item) => item.id === input.entityId)
+    const created = {
       id: Date.now(), code: "SOL-2026-0049", applicant: "Deudor Demo",
-      financialEntity: entity?.name ?? "Entidad Demo", type: input.type, status: "REGISTRADA",
+      financialEntity: entity?.name ?? "Entidad Demo", type: input.type, status: "REGISTRADA" as RequestStatus,
       createdAt: "2026-06-18", documentNumber: input.documentNumber, amount: input.amount,
       currency: input.currency, reason: input.reason, version: 0,
     }
+    setRequestsStore([created, ...getRequestsStore()] as typeof requests)
+    return created
   },
   async updateRequestStatus(id, status, observation) {
     await wait()
-    const current = requests.find((item) => item.id === id)
+    const items = getRequestsStore()
+    const current = items.find((item) => item.id === id)
     if (!current) throw new Error("Solicitud no encontrada.")
-    return { ...clone(current), status, observation, version: current.version + 1 } satisfies RequestRecord
+    const updated = { ...clone(current), status, observation, version: current.version + 1 } satisfies RequestRecord
+    setRequestsStore(items.map((item) => item.id === id ? updated : item) as typeof requests)
+    return updated
   },
   async uploadDocument() { await wait() },
   async uploadDocuments() { await wait() },
@@ -217,10 +242,21 @@ export const mockService: AppService = {
     window.document.body.removeChild(link)
     URL.revokeObjectURL(url)
   },
-  async uploadExcel() { await wait() },
-  async getExcelUploads() { await wait(); return [] },
+  async uploadExcel(file) {
+    await wait()
+    const item = { id: Date.now(), filename: file?.name ?? "plantilla-protestos.xlsx", status: "CARGADO", createdAt: new Date().toISOString() }
+    const items = getDemoData<typeof item[]>("excel-uploads", [])
+    setDemoData("excel-uploads", [item, ...items])
+    return undefined
+  },
+  async getExcelUploads() { await wait(); return getDemoData("excel-uploads", []) },
   async validateExcel() { await wait(); return { valid: true, totalRows: 10, validRows: 10, errorRows: 0, errors: [], preview: [] } },
-  async importExcel() { await wait(); return { cargaId: 1, filename: "plantilla-protestos-cci-datos-prueba.xlsx", status: "PROCESADA", summary: "Archivo importado correctamente", totalRows: 10, importedRows: 10, errorRows: 0, errors: [] } },
+  async importExcel() {
+    await wait()
+    const result = { cargaId: Date.now(), filename: "plantilla-protestos-cci-datos-prueba.xlsx", status: "PROCESADA", summary: "Archivo importado correctamente", totalRows: 10, importedRows: 10, errorRows: 0, errors: [] }
+    setDemoData("excel-import", result)
+    return result
+  },
   async getOfficialDocuments(includeInactive = false) {
     await wait()
     return getMockOfficialDocuments()
@@ -267,66 +303,79 @@ export const mockService: AppService = {
     await wait()
     return new Blob([`PDF simulado: ${document.title}`], { type: "application/pdf" })
   },
-  async getEntities() { await wait(); return clone(entities) },
-  async createEntity(input) { await wait(); return { id: Date.now(), ...input, active: true } },
-  async updateEntity(id, input) { await wait(); return { id, ...input } },
+  async getEntities() { await wait(); return clone(getEntitiesStore()) },
+  async createEntity(input) { await wait(); const created = { id: Date.now(), ...input, active: true }; setEntitiesStore([created, ...getEntitiesStore()] as typeof entities); return created },
+  async updateEntity(id, input) { await wait(); const items = getEntitiesStore(); const current = items.find((item) => item.id === id); if (!current) throw new Error("Entidad no encontrada."); const updated = { ...current, ...input }; setEntitiesStore(items.map((item) => item.id === id ? updated : item) as typeof entities); return updated },
   async toggleEntityStatus(id, active) {
     await wait()
-    const current = entities.find((item) => item.id === id)
+    const items = getEntitiesStore()
+    const current = items.find((item) => item.id === id)
     if (!current) throw new Error("Entidad no encontrada.")
-    return { ...clone(current), active }
+    const updated = { ...clone(current), active }
+    setEntitiesStore(items.map((item) => item.id === id ? updated : item) as typeof entities)
+    return updated
   },
-  async getAnalysts() { await wait(); return clone(analysts) },
+  async getAnalysts() { await wait(); return clone(getAnalystsStore()) },
   async createAnalyst(input) { 
     await wait(); 
-    const ent = entities.find(e => e.id === input.entityId);
+    const ent = getEntitiesStore().find(e => e.id === input.entityId);
     const analyst = { id: Date.now(), ...input, assigned: 0, active: false, accessStatus: "PENDING_ACTIVATION" as const, entityName: ent?.name }
+    setAnalystsStore([analyst, ...getAnalystsStore()] as typeof analysts)
     return { analyst, activationToken: "mock-activation-token", expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() }
   },
   async regenerateAnalystInvitation(id) {
     await wait()
-    const current = analysts.find((item) => item.id === id)
+    const current = getAnalystsStore().find((item) => item.id === id)
     if (!current) throw new Error("Analista no encontrado.")
     return { analyst: clone(current), activationToken: "mock-regenerated-token", expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() }
   },
   async restartAnalystActivation(id) {
     await wait()
-    const current = analysts.find((item) => item.id === id)
+    const items = getAnalystsStore()
+    const current = items.find((item) => item.id === id)
     if (!current) throw new Error("Analista no encontrado.")
     const analyst = { ...clone(current), active: false, accessStatus: "PENDING_ACTIVATION" as const }
+    setAnalystsStore(items.map((item) => item.id === id ? analyst : item) as typeof analysts)
     return { analyst, activationToken: "mock-reactivation-token", expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() }
   },
   async validateAnalystInvitation() { await wait(); return { name: "Analista invitado", email: "analista@entidad.test", entity: "Entidad financiera", expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() } },
   async activateAnalyst() { await wait() },
   async updateAnalyst(id, input) { 
     await wait(); 
-    const ent = entities.find(e => e.id === input.entityId);
-    return { id, ...input, assigned: 0, accessStatus: input.active ? "ACTIVE" as const : "DISABLED" as const, entityName: ent?.name }
+    const ent = getEntitiesStore().find(e => e.id === input.entityId);
+    const updated = { id, ...input, assigned: 0, accessStatus: input.active ? "ACTIVE" as const : "DISABLED" as const, entityName: ent?.name }
+    setAnalystsStore(getAnalystsStore().map((item) => item.id === id ? { ...item, ...updated } : item) as typeof analysts)
+    return updated
   },
   async toggleAnalystStatus(id, active) {
     await wait()
-    const current = analysts.find((item) => item.id === id)
+    const items = getAnalystsStore()
+    const current = items.find((item) => item.id === id)
     if (!current) throw new Error("Analista no encontrado.")
-    return { ...clone(current), active, accessStatus: active ? "ACTIVE" : "DISABLED" }
+    const updated = { ...clone(current), active, accessStatus: active ? "ACTIVE" as const : "DISABLED" as const }
+    setAnalystsStore(items.map((item) => item.id === id ? updated : item) as typeof analysts)
+    return updated
   },
   async resetAnalystPassword() { await wait() },
   async getNotifications(limit = 10) {
     await wait()
-    const throughId = Number(localStorage.getItem("mock_notifications_read") ?? 0)
+    const throughId = Number(localStorage.getItem(`${DEMO_PREFIX}notifications-read`) ?? 0)
     const items = mockNotifications.slice(0, limit).map((item) => ({ ...item, read: item.id <= throughId }))
     return { items, unreadCount: mockNotifications.filter((item) => item.id > throughId).length }
   },
   async markNotificationsRead(throughId) {
     await wait()
-    localStorage.setItem("mock_notifications_read", String(throughId))
+    localStorage.setItem(`${DEMO_PREFIX}notifications-read`, String(throughId))
   },
   async getDebtorRequestsHistory(documentNumber) {
     await wait()
-    return clone(requests).filter((item) => item.documentNumber === documentNumber)
+    return clone(getRequestsStore()).filter((item) => item.documentNumber === documentNumber)
   },
   async updateRequest(id, input) {
     await wait()
-    return { id, code: "SOL-CORRECTED", applicant: "Deudor Demo", ...input, status: "REGISTRADA" as RequestStatus, version: 1, createdAt: new Date().toISOString(), financialEntity: entities.find(e => e.id === input.entityId)?.name || "" }
+    const updated = { id, code: "SOL-CORRECTED", applicant: "Deudor Demo", ...input, status: "REGISTRADA" as RequestStatus, version: 1, createdAt: new Date().toISOString(), financialEntity: getEntitiesStore().find(e => e.id === input.entityId)?.name || "" }
+    setRequestsStore(getRequestsStore().map((item) => item.id === id ? updated : item) as typeof requests)
+    return updated
   },
   async getReport() { await wait(); return report() },
   async getAudit({ page: index = 0, size = 10 } = {}) { await wait(); return page(clone(auditEntries), index, size) },
